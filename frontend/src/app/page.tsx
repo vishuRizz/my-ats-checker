@@ -122,7 +122,7 @@ export default function Home() {
         )}
 
         {state.status === "done" && (
-          <AnalysisPanel data={state.data} filename={resumeFile?.name || "resume"} onReset={handleReset} />
+          <AnalysisPanel data={state.data} filename={resumeFile?.name || "resume"} resumeFile={resumeFile} onReset={handleReset} />
         )}
       </div>
     </div>

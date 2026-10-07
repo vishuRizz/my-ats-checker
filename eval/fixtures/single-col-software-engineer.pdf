@@ -1,0 +1,48 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Length 1122 >>
+stream
+BT /F1 14 Tf 50 750 Td (Jane Doe) Tj ET
+BT /F1 11 Tf 50 734 Td (jane.doe@example.com | 555-123-4567 | github.com/janedoe) Tj ET
+BT /F1 11 Tf 50 718 Td () Tj ET
+BT /F1 11 Tf 50 702 Td (EXPERIENCE) Tj ET
+BT /F1 11 Tf 50 686 Td (Senior Frontend Engineer - Acme Corp  \(Jan 2021 - Present\)) Tj ET
+BT /F1 11 Tf 50 670 Td (  Built React and TypeScript dashboards serving 50k+ users) Tj ET
+BT /F1 11 Tf 50 654 Td (  Reduced page load time by 40% using code splitting) Tj ET
+BT /F1 11 Tf 50 638 Td (  Led migration from Redux to Zustand cutting bundle 20%) Tj ET
+BT /F1 11 Tf 50 622 Td (Software Engineer - StartupXYZ  \(Mar 2018 - Dec 2020\)) Tj ET
+BT /F1 11 Tf 50 606 Td (  Developed Node.js REST APIs consumed by mobile apps) Tj ET
+BT /F1 11 Tf 50 590 Td (  Integrated PostgreSQL databases with Drizzle ORM) Tj ET
+BT /F1 11 Tf 50 574 Td () Tj ET
+BT /F1 11 Tf 50 558 Td (EDUCATION) Tj ET
+BT /F1 11 Tf 50 542 Td (B.S. Computer Science - State University  \(2018\)) Tj ET
+BT /F1 11 Tf 50 526 Td () Tj ET
+BT /F1 11 Tf 50 510 Td (SKILLS) Tj ET
+BT /F1 11 Tf 50 494 Td (React, TypeScript, Node.js, PostgreSQL, AWS, Docker, Git) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 3 0 R >> >> >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000212 00000 n 
+0000001386 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1512
+%%EOF

@@ -7,6 +7,8 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { parse, analyze } from "./engine/index";
+import { db } from "./db/client";
+import { resumes, analyses } from "./db/schema";
 
 const PORT = parseInt(process.env.PORT || "3001", 10);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -39,7 +41,7 @@ fastify.register(multipart, {
 // ─── Health Check ─────────────────────────────────────────────
 
 fastify.get("/health", async () => {
-  return { status: "ok", timestamp: new Date().toISOString() };
+  return { status: "ok", timestamp: new Date().toISOString(), dbConnected: !!db };
 });
 
 // ─── POST /api/analyze ────────────────────────────────────────
@@ -65,9 +67,11 @@ fastify.post("/api/analyze", async (request, reply) => {
           "application/pdf",
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ];
-        if (!allowedMimes.includes(part.mimetype) &&
+        if (
+          !allowedMimes.includes(part.mimetype) &&
           !part.filename?.toLowerCase().endsWith(".pdf") &&
-          !part.filename?.toLowerCase().endsWith(".docx")) {
+          !part.filename?.toLowerCase().endsWith(".docx")
+        ) {
           await part.toBuffer(); // drain the stream
           return reply.status(400).send({
             error: "invalid_file_type",
@@ -100,6 +104,39 @@ fastify.post("/api/analyze", async (request, reply) => {
     const analysisResult = await analyze(parseResult, jdText || null);
     const totalTime = Date.now() - startTime;
     fastify.log.info({ totalTime, score: analysisResult.scoreBreakdown.overall }, "Analysis complete");
+
+    // ─── Persist to DB (fire-and-forget, never blocks response) ──
+    // PRD §5.1: persist resumes + analyses. Anonymous users get 24h auto-delete.
+    if (db) {
+      const capturedBuffer = fileBuffer;
+      setImmediate(async () => {
+        try {
+          const [resumeRow] = await db!
+            .insert(resumes)
+            .values({
+              filename,
+              fileType: parseResult.fileType,
+              fileSizeBytes: capturedBuffer.length,
+              status: "done",
+              // Auto-delete in 24h for anonymous uploads (PRD §9)
+              deleteAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            })
+            .returning({ id: resumes.id });
+
+          await db!.insert(analyses).values({
+            resumeId: resumeRow.id,
+            scoreBreakdown: analysisResult.scoreBreakdown as any,
+            keywordReport: analysisResult.keywordReport as any,
+            rules: analysisResult.rules as any,
+          });
+
+          fastify.log.info({ resumeId: resumeRow.id }, "Persisted resume+analysis to DB");
+        } catch (dbErr) {
+          // DB errors never surface to the user
+          fastify.log.warn(dbErr, "DB persistence failed (non-fatal)");
+        }
+      });
+    }
 
     return reply.status(200).send({
       ...analysisResult,

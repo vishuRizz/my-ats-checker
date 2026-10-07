@@ -11,12 +11,13 @@ import { ScorePanel } from "./ScorePanel";
 interface AnalysisPanelProps {
   data: AnalysisResponse;
   filename: string;
+  resumeFile?: File | null;
   onReset: () => void;
 }
 
 type Tab = "parse" | "rules" | "score" | "keywords";
 
-export function AnalysisPanel({ data, filename, onReset }: AnalysisPanelProps) {
+export function AnalysisPanel({ data, filename, resumeFile, onReset }: AnalysisPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("parse");
 
   const { parseResult, rules, keywordReport, scoreBreakdown, meta } = data;
@@ -154,7 +155,7 @@ export function AnalysisPanel({ data, filename, onReset }: AnalysisPanelProps) {
 
       {/* ─── Tab Content ─────────────────────────────────────────── */}
       <div style={{ animation: "fadeIn 0.3s ease-out" }} key={activeTab}>
-        {activeTab === "parse" && <ParseReport parseResult={parseResult} />}
+        {activeTab === "parse" && <ParseReport parseResult={parseResult} resumeFile={resumeFile} />}
         {activeTab === "rules" && <RulesPanel rules={rules} />}
         {activeTab === "score" && <ScorePanel scoreBreakdown={scoreBreakdown} />}
         {activeTab === "keywords" && keywordReport && <KeywordReport report={keywordReport} />}

@@ -1,0 +1,57 @@
+[
+  {
+    "filename": "single-col-software-engineer.pdf",
+    "description": "Standard single-column software engineer resume",
+    "expectedSections": ["experience", "education", "skills", "contact"],
+    "expectedName": "Jane Doe",
+    "expectedEmail": "jane.doe@example.com",
+    "expectedPhone": "555-123-4567",
+    "expectedSkills": ["React", "TypeScript", "Node.js"],
+    "expectedMultiColumn": false,
+    "expectedPageCount": 1
+  },
+  {
+    "filename": "two-col-designer.pdf",
+    "description": "Two-column designer resume (sidebar layout)",
+    "expectedSections": ["experience", "education", "skills"],
+    "expectedName": "Alex Rivera",
+    "expectedEmail": "alex.rivera@email.com",
+    "expectedPhone": "555-987-6543",
+    "expectedSkills": ["Figma", "CSS", "HTML"],
+    "expectedMultiColumn": true,
+    "expectedPageCount": 1
+  },
+  {
+    "filename": "simple-docx-resume.docx",
+    "description": "Simple Word document resume",
+    "expectedSections": ["experience", "education", "skills"],
+    "expectedName": "Morgan Chen",
+    "expectedEmail": "morgan.chen@company.com",
+    "expectedPhone": "555-456-7890",
+    "expectedSkills": ["Python", "SQL", "AWS"],
+    "expectedMultiColumn": false,
+    "expectedPageCount": 1
+  },
+  {
+    "filename": "senior-engineer-resume.pdf",
+    "description": "Senior engineer with 2 pages of experience",
+    "expectedSections": ["summary", "experience", "education", "skills", "certifications"],
+    "expectedName": "Jordan Smith",
+    "expectedEmail": "jordan.smith@tech.com",
+    "expectedPhone": "555-222-3333",
+    "expectedSkills": ["Kubernetes", "AWS", "TypeScript", "Go"],
+    "expectedMultiColumn": false,
+    "expectedPageCount": 2
+  },
+  {
+    "filename": "minimal-resume.pdf",
+    "description": "Minimal resume missing some standard sections",
+    "expectedSections": ["experience", "skills"],
+    "expectedName": "Sam Taylor",
+    "expectedEmail": "sam.taylor@gmail.com",
+    "expectedPhone": "",
+    "expectedSkills": ["JavaScript", "React"],
+    "expectedMultiColumn": false,
+    "expectedPageCount": 1
+  }
+]

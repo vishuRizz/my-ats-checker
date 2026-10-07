@@ -1,0 +1,66 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Length 1064 >>
+stream
+BT /F1 14 Tf 50 750 Td (Jordan Smith) Tj ET
+BT /F1 11 Tf 50 734 Td (jordan.smith@tech.com | 555-222-3333 | linkedin.com/in/jordansmith) Tj ET
+BT /F1 11 Tf 50 718 Td () Tj ET
+BT /F1 11 Tf 50 702 Td (SUMMARY) Tj ET
+BT /F1 11 Tf 50 686 Td (Staff Software Engineer with 10 years of experience in distributed systems.) Tj ET
+BT /F1 11 Tf 50 670 Td () Tj ET
+BT /F1 11 Tf 50 654 Td (EXPERIENCE) Tj ET
+BT /F1 11 Tf 50 638 Td (Staff Engineer - BigTech Inc  \(2020 - Present\)) Tj ET
+BT /F1 11 Tf 50 622 Td (  Architected Kubernetes-based deployment platform for 200+ microservices) Tj ET
+BT /F1 11 Tf 50 606 Td (  Reduced infrastructure costs by 35% via AWS spot instance optimization) Tj ET
+BT /F1 11 Tf 50 590 Td (  Mentored team of 8 engineers across 3 time zones) Tj ET
+BT /F1 11 Tf 50 574 Td () Tj ET
+BT /F1 11 Tf 50 558 Td (Senior Engineer - MidCo  \(2016 - 2020\)) Tj ET
+BT /F1 11 Tf 50 542 Td (  Built Go-based event streaming pipeline processing 2M events per sec) Tj ET
+BT /F1 11 Tf 50 526 Td (  Designed TypeScript SDK adopted by 500+ enterprise customers) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 3 0 R >> >> >>
+endobj
+6 0 obj
+<< /Length 604 >>
+stream
+BT /F1 14 Tf 50 750 Td (EDUCATION) Tj ET
+BT /F1 11 Tf 50 734 Td (M.S. Computer Science - Tech University  \(2014\)) Tj ET
+BT /F1 11 Tf 50 718 Td (B.S. Computer Science - State University  \(2012\)) Tj ET
+BT /F1 11 Tf 50 702 Td () Tj ET
+BT /F1 11 Tf 50 686 Td (SKILLS) Tj ET
+BT /F1 11 Tf 50 670 Td (Kubernetes, AWS, TypeScript, Go, PostgreSQL, Redis, Docker, Terraform) Tj ET
+BT /F1 11 Tf 50 654 Td () Tj ET
+BT /F1 11 Tf 50 638 Td (CERTIFICATIONS) Tj ET
+BT /F1 11 Tf 50 622 Td (AWS Solutions Architect Professional \(2022\)) Tj ET
+BT /F1 11 Tf 50 606 Td (Certified Kubernetes Administrator \(2021\)) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R /Resources << /Font << /F1 3 0 R >> >> >>
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000001334 00000 n 
+0000001460 00000 n 
+0000002115 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+2241
+%%EOF

@@ -176,14 +176,11 @@ export function detectSections(items: TextItem[], fullText: string): Section[] {
 
   // Build sections from text between heading markers
   const sections: Section[] = [];
-  const lines = fullText.split("\n");
 
   for (let hi = 0; hi < headings.length; hi++) {
     const heading = headings[hi];
     const nextHeading = headings[hi + 1];
 
-    // Find all text between this heading and the next
-    // Use the sorted items for this
     const startIdx = heading.index;
     const endIdx = nextHeading ? nextHeading.index : sorted.length;
 
@@ -197,6 +194,26 @@ export function detectSections(items: TextItem[], fullText: string): Section[] {
       startPage: heading.page,
       confidence: 0.85,
     });
+  }
+
+  // ─── Synthesize "contact" section if absent ───────────────────
+  // Most resumes put name/email/phone at the top without an explicit
+  // "CONTACT" heading. If we find contact entities in the first ~5 lines
+  // of text, we create a synthetic contact section (confidence 0.7).
+  const hasContactSection = sections.some((s) => s.name === "contact");
+  if (!hasContactSection) {
+    const topLines = fullText.split("\n").slice(0, 8).join("\n");
+    const hasEmail = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/.test(topLines);
+    const hasPhone = /(?:\+?[\d\s\-().]{7,15})/.test(topLines);
+    if (hasEmail || hasPhone) {
+      sections.unshift({
+        name: "contact",
+        rawHeading: "",   // inferred — no explicit heading
+        text: topLines,
+        startPage: 1,
+        confidence: 0.7,
+      });
+    }
   }
 
   return sections;
