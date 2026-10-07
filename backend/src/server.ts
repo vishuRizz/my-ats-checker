@@ -24,12 +24,12 @@ const fastify = Fastify({
 
 // ─── Plugins ─────────────────────────────────────────────────
 
-await fastify.register(cors, {
+fastify.register(cors, {
   origin: ALLOWED_ORIGIN === "*" ? true : [ALLOWED_ORIGIN, "http://localhost:3000"],
   methods: ["GET", "POST", "OPTIONS"],
 });
 
-await fastify.register(multipart, {
+fastify.register(multipart, {
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB
     files: 1,
