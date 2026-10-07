@@ -10,6 +10,8 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "backend": "file:../backend"
+    "backend": "file:../backend",
+    "mammoth": "^1.13.0",
+    "pdfjs-dist": "^6.4.299"
   }
 }
