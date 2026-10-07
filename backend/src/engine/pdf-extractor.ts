@@ -23,9 +23,11 @@ let _pdfjsLib: any = null;
 async function getPdfjs() {
   if (_pdfjsLib) return _pdfjsLib;
   _pdfjsLib = await import("pdfjs-dist");
-  // Disable web worker — not available in Node.js
+  // In Node.js, point workerSrc to the actual worker file via require.resolve (CJS-safe)
   if (_pdfjsLib.GlobalWorkerOptions) {
-    _pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const workerPath: string = require.resolve("pdfjs-dist/build/pdf.worker.mjs");
+    _pdfjsLib.GlobalWorkerOptions.workerSrc = `file://${workerPath}`;
   }
   return _pdfjsLib;
 }
