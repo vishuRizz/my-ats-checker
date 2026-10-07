@@ -1,0 +1,15 @@
+{
+  "name": "ats-eval",
+  "version": "1.0.0",
+  "scripts": {
+    "run-eval": "tsx runner.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "backend": "file:../backend"
+  }
+}
