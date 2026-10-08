@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { AnalysisResponse } from "@/types";
 import { ScoreRing } from "@/components/ui/ScoreRing";
+import { ExportButton } from "@/components/ui/ExportButton";
 import { RulesPanel } from "./RulesPanel";
 import { ParseReport } from "./ParseReport";
 import { KeywordReport } from "./KeywordReport";
@@ -112,15 +113,17 @@ export function AnalysisPanel({ data, filename, resumeFile, onReset }: AnalysisP
           </div>
         </div>
 
-        {/* New Scan button (top right) */}
-        <button
-          className="btn-secondary"
-          onClick={onReset}
-          style={{ gridColumn: "span 2", justifySelf: "end", alignSelf: "start" }}
-          id="new-scan-button"
-        >
-          ← New Scan
-        </button>
+        {/* Action buttons (top right) */}
+        <div style={{ gridColumn: "span 2", justifySelf: "end", alignSelf: "start", display: "flex", gap: 10 }}>
+          <ExportButton data={data} filename={filename} />
+          <button
+            className="btn-secondary"
+            onClick={onReset}
+            id="new-scan-button"
+          >
+            ← New Scan
+          </button>
+        </div>
       </div>
 
       {/* ─── Tabs ────────────────────────────────────────────────── */}

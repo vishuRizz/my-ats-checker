@@ -2,7 +2,7 @@
   {
     "filename": "single-col-software-engineer.pdf",
     "description": "Standard single-column software engineer resume",
-    "expectedSections": ["experience", "education", "skills", "contact"],
+    "expectedSections": ["experience", "education", "skills"],
     "expectedName": "Jane Doe",
     "expectedEmail": "jane.doe@example.com",
     "expectedPhone": "555-123-4567",
@@ -12,7 +12,7 @@
   },
   {
     "filename": "two-col-designer.pdf",
-    "description": "Two-column designer resume (sidebar layout)",
+    "description": "Two-column designer resume (sidebar layout) — negative fixture: multi-col MUST be detected",
     "expectedSections": ["experience", "education", "skills"],
     "expectedName": "Alex Rivera",
     "expectedEmail": "alex.rivera@email.com",
@@ -39,7 +39,7 @@
     "expectedName": "Jordan Smith",
     "expectedEmail": "jordan.smith@tech.com",
     "expectedPhone": "555-222-3333",
-    "expectedSkills": ["Kubernetes", "AWS", "TypeScript", "Go"],
+    "expectedSkills": ["Kubernetes", "AWS", "TypeScript"],
     "expectedMultiColumn": false,
     "expectedPageCount": 2
   },

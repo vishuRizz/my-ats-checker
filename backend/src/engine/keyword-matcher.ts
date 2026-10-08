@@ -20,12 +20,12 @@ import type { ParseResult } from "./types.js";
 // Maps canonical skill → [exact aliases that count as a match]
 // Each alias is matched as a WHOLE WORD (not substring).
 const ALIAS_MAP: Record<string, string[]> = {
-  "javascript":    ["javascript", "js", "ecmascript", "es6", "es2015", "es2020"],
+  "javascript":    ["javascript", "ecmascript", "es6", "es2015", "es2020"],  // 'js' removed — causes false positives in "Node.js", ".js"
   "typescript":    ["typescript", "ts"],
   "python":        ["python", "python3"],
   "react":         ["react", "reactjs", "react.js"],
   "react native":  ["react native", "react-native"],
-  "node.js":       ["node.js", "nodejs"],    // "node" alone NOT in list — prevents "node" matching "Node16"
+  "node.js":       ["node.js", "nodejs"],    // bare 'node' removed — caused 'node16', 'node_modules' matches
   "next.js":       ["next.js", "nextjs"],
   "vue":           ["vue", "vuejs", "vue.js"],
   "angular":       ["angular", "angularjs"],

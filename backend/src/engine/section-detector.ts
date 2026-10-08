@@ -322,10 +322,11 @@ function extractSkillsList(text: string): string[] {
       const nextLabel = chunk.search(/\b(?:Languages|Frameworks|Databases|Developer|Other|Tools|Technologies)\b/i);
       const relevant = nextLabel > 0 ? chunk.slice(0, nextLabel) : chunk;
       const parts = relevant
-        .replace(/[•·▪▸→\-–—]/g, ",")
+        .replace(/[•·▪▸→–—]/g, ",")  // em-dash, bullet chars — but NOT hyphens (they appear in skill names like "Third-party")
+        .replace(/\s-\s/g, ",")        // " - " with spaces → comma delimiter
         .split(/[,;]/)
         .map((s) => s.trim())
-        .filter((s) => s.length > 1 && s.length < 50 && !/^\d+$/.test(s));
+        .filter((s) => s.length > 1 && s.length < 60 && !/^\d+$/.test(s));
       skills.push(...parts);
     }
   } else {

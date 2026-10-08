@@ -278,27 +278,85 @@ const PDF_FIXTURES = [
       ],
     ],
   },
-  {
-    filename: "two-col-designer.pdf",
-    pages: [
-      [
-        "Alex Rivera",
-        "alex.rivera@email.com | 555-987-6543",
-        "",
-        "EXPERIENCE",
-        "UI/UX Designer - DesignStudio  (2021 - Present)",
-        "  Designed end-to-end user flows for fintech mobile app",
-        "  Created component library in Figma used by 6 dev teams",
-        "",
-        "EDUCATION",
-        "B.A. Graphic Design - Art College  (2021)",
-        "",
-        "SKILLS",
-        "Figma, CSS, HTML, Adobe XD, Sketch, Prototyping, User Research",
-      ],
-    ],
-  },
 ];
+
+// ─── Custom two-column PDF builder ────────────────────────────
+// Places content in two actual columns (left: x=50, right: x=330)
+// so the gutter detector fires correctly.
+function buildTwoColPDF() {
+  const objects = [];
+  let objId = 1;
+  const addObj = (content) => {
+    const id = objId++;
+    objects.push({ id, content });
+    return id;
+  };
+
+  addObj(`<< /Type /Catalog /Pages 2 0 R >>`); // 1
+  addObj(null);                                  // 2 placeholder
+  const fontId = addObj(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>`);
+  const boldFontId = addObj(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>`);
+
+  // Left column: main content at x=50, width ~250pt
+  // Right column: sidebar at x=330, width ~220pt
+  const ops = [
+    // Header — name
+    `BT /F2 16 Tf 50 750 Td (Alex Rivera) Tj ET`,
+    `BT /F1 10 Tf 50 735 Td (alex.rivera@email.com | 555-987-6543) Tj ET`,
+
+    // Left column headings + bullets
+    `BT /F2 12 Tf 50 710 Td (EXPERIENCE) Tj ET`,
+    `BT /F1 11 Tf 50 695 Td (UI/UX Designer - DesignStudio) Tj ET`,
+    `BT /F1 10 Tf 50 680 Td (2021 - Present) Tj ET`,
+    `BT /F1 10 Tf 50 665 Td (- Designed end-to-end user flows for fintech app) Tj ET`,
+    `BT /F1 10 Tf 50 650 Td (- Created component library in Figma for 6 teams) Tj ET`,
+    `BT /F1 10 Tf 50 635 Td (- Led user research sessions with 50+ participants) Tj ET`,
+    `BT /F2 12 Tf 50 615 Td (EDUCATION) Tj ET`,
+    `BT /F1 11 Tf 50 600 Td (B.A. Graphic Design - Art College) Tj ET`,
+    `BT /F1 10 Tf 50 585 Td (2021) Tj ET`,
+    `BT /F1 10 Tf 50 570 Td (GPA 3.8 - Dean List all semesters) Tj ET`,
+    `BT /F1 10 Tf 50 555 Td (Thesis: Human-centered design in fintech) Tj ET`,
+    `BT /F1 10 Tf 50 540 Td (Graduated with honors) Tj ET`,
+
+    // Right column (sidebar at x=330) — skills, tools, contact
+    `BT /F2 12 Tf 330 710 Td (SKILLS) Tj ET`,
+    `BT /F1 10 Tf 330 695 Td (Figma) Tj ET`,
+    `BT /F1 10 Tf 330 680 Td (Adobe XD) Tj ET`,
+    `BT /F1 10 Tf 330 665 Td (CSS) Tj ET`,
+    `BT /F1 10 Tf 330 650 Td (HTML) Tj ET`,
+    `BT /F1 10 Tf 330 635 Td (Sketch) Tj ET`,
+    `BT /F1 10 Tf 330 620 Td (Prototyping) Tj ET`,
+    `BT /F2 12 Tf 330 600 Td (TOOLS) Tj ET`,
+    `BT /F1 10 Tf 330 585 Td (Notion) Tj ET`,
+    `BT /F1 10 Tf 330 570 Td (Jira) Tj ET`,
+    `BT /F1 10 Tf 330 555 Td (GitHub) Tj ET`,
+    `BT /F1 10 Tf 330 540 Td (Slack) Tj ET`,
+    `BT /F2 12 Tf 330 520 Td (LANGUAGES) Tj ET`,
+    `BT /F1 10 Tf 330 505 Td (English - Native) Tj ET`,
+    `BT /F1 10 Tf 330 490 Td (Spanish - Conversational) Tj ET`,
+  ].join("\n");
+
+  const streamId = addObj(`<< /Length ${ops.length} >>\nstream\n${ops}\nendstream`);
+  const pageId = addObj(
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents ${streamId} 0 R /Resources << /Font << /F1 ${fontId} 0 R /F2 ${boldFontId} 0 R >> >> >>`
+  );
+
+  objects[1].content = `<< /Type /Pages /Kids [${pageId} 0 R] /Count 1 >>`;
+
+  let out = "%PDF-1.4\n";
+  const offsets = [];
+  for (const obj of objects) {
+    offsets.push(out.length);
+    out += `${obj.id} 0 obj\n${obj.content}\nendobj\n`;
+  }
+  const xrefOffset = out.length;
+  out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) {
+    out += String(offset).padStart(10, "0") + " 00000 n \n";
+  }
+  out += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return Buffer.from(out, "latin1");
+}
 
 const DOCX_FIXTURE = {
   filename: "simple-docx-resume.docx",
@@ -330,12 +388,18 @@ async function generate() {
     console.log(`  ✅ ${fixture.filename} (${buf.length} bytes)`);
   }
 
+  // Two-column fixture: uses custom builder with real x-coordinates
+  const twoColPath = path.join(FIXTURES_DIR, "two-col-designer.pdf");
+  const twoColBuf = buildTwoColPDF();
+  fs.writeFileSync(twoColPath, twoColBuf);
+  console.log(`  ✅ two-col-designer.pdf (${twoColBuf.length} bytes, real 2-column layout)`);
+
   const docxPath = path.join(FIXTURES_DIR, DOCX_FIXTURE.filename);
   const docxBuf = buildDOCX(DOCX_FIXTURE.paragraphs);
   fs.writeFileSync(docxPath, docxBuf);
   console.log(`  ✅ ${DOCX_FIXTURE.filename} (${docxBuf.length} bytes, real DOCX zip)`);
 
-  console.log(`\n✅ All ${PDF_FIXTURES.length + 1} fixtures written to ${FIXTURES_DIR}`);
+  console.log(`\n✅ All ${PDF_FIXTURES.length + 2} fixtures written to ${FIXTURES_DIR}`);
   console.log(`\nNext: cd eval && npx tsx runner.ts`);
 }
 
