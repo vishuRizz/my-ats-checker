@@ -55,7 +55,8 @@ export function SuggestionsPanel({ data, jdText }: SuggestionsPanelProps) {
   const runSuggest = useCallback(async () => {
     setState({ status: "loading" });
     try {
-      const res = await fetch(`${API_URL}/api/suggest`, {
+      const baseUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
+      const res = await fetch(`${baseUrl}/api/suggest`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

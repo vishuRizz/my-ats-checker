@@ -29,7 +29,8 @@ export default function Home() {
       // Simulate upload progress
       setState({ status: "uploading", progress: 30 });
 
-      const response = await fetch(`${API_URL}/api/analyze`, {
+      const baseUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
+      const response = await fetch(`${baseUrl}/api/analyze`, {
         method: "POST",
         body: formData,
       });
