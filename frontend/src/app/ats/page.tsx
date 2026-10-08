@@ -61,27 +61,10 @@ export default function Home() {
   return (
     <div style={{ minHeight: "100vh", position: "relative" }}>
       {/* Background gradient orbs */}
-      <div aria-hidden="true" style={{
-        position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0
-      }}>
-        <div style={{
-          position: "absolute", top: "-20%", left: "-10%",
-          width: "600px", height: "600px",
-          background: "radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)",
-          borderRadius: "50%",
-        }} />
-        <div style={{
-          position: "absolute", top: "30%", right: "-15%",
-          width: "500px", height: "500px",
-          background: "radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%)",
-          borderRadius: "50%",
-        }} />
-        <div style={{
-          position: "absolute", bottom: "-10%", left: "30%",
-          width: "400px", height: "400px",
-          background: "radial-gradient(circle, rgba(236,72,153,0.07) 0%, transparent 70%)",
-          borderRadius: "50%",
-        }} />
+      <div aria-hidden="true" className="fixed inset-0 overflow-hidden pointer-events-none z-0 bg-zinc-950">
+        {/* Background gradient from landing page */}
+        <div className="absolute inset-0 bg-gradient-to-b from-zinc-950 via-zinc-950 to-zinc-900 pointer-events-none" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-zinc-800/20 rounded-full blur-3xl pointer-events-none" />
       </div>
 
       <div style={{ position: "relative", zIndex: 1 }}>

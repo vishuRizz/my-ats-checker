@@ -37,8 +37,8 @@ export function ParseReport({ parseResult, resumeFile }: ParseReportProps) {
     bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.35)", iconBg: "rgba(245,158,11,0.15)",
     icon: "⚠️", label: "Low ATS Readability Detected", color: "#f59e0b", badge: "MEDIUM RISK",
   } : parsabilityRisk === "low" ? {
-    bg: "rgba(99,102,241,0.06)", border: "rgba(99,102,241,0.2)", iconBg: "rgba(99,102,241,0.1)",
-    icon: "ℹ️", label: "Potential ATS Readability Issues", color: "#6366f1", badge: "LOW RISK",
+    bg: "rgba(255,255,255,0.03)", border: "rgba(255,255,255,0.1)", iconBg: "rgba(255,255,255,0.05)",
+    icon: "ℹ️", label: "Potential ATS Readability Issues", color: "#d4d4d8", badge: "LOW RISK",
   } : null;
 
   return (
@@ -78,7 +78,7 @@ export function ParseReport({ parseResult, resumeFile }: ParseReportProps) {
                 <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6 }}>
                   <strong style={{ color: riskConfig.color }}>How to fix: </strong>
                   {parseResult.isImageOnly
-                    ? "Open in Google Docs or Word and export as PDF. Never scan a printed resume. Avoid Canva's \"Image PDF\" export — use their ATS-friendly text export instead."
+                    ? "Open in Google Docs or Word and export as PDF. Never scan a printed resume. Avoid Canva's \"Image PDF\" export - use their ATS-friendly text export instead."
                     : "Try selecting all text in your PDF viewer. If you cannot select the text, ATS cannot read it. Re-create in Google Docs or Microsoft Word and export as PDF."}
                 </p>
               </div>
@@ -262,7 +262,7 @@ export function ParseReport({ parseResult, resumeFile }: ParseReportProps) {
       {viewMode === "heatmap" && hasPdf && (
         <div className="card" style={{ padding: 20 }}>
           <h3 style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: 16 }}>
-            PDF Heatmap — What the ATS Sees
+            PDF Heatmap - What the ATS Sees
           </h3>
           <PdfHeatmap file={resumeFile!} lostRegions={lostRegions} />
         </div>

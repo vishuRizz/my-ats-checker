@@ -1,6 +1,6 @@
 "use strict";
 // ============================================================
-// Keyword Matcher — Phase 1
+// Keyword Matcher - Phase 1
 // PRD §6.5: Exact keyword match against JD with alias awareness
 // Uses a hardcoded alias list (~50 common tech mappings)
 // ============================================================
@@ -143,7 +143,7 @@ function checkPlacement(keyword, aliases, parseResult) {
     const allAliasPatterns = aliases.map((a) => new RegExp(`\\b${escapeRegex(a)}\\b`, "gi"));
     // Check if it appears in a bullet in experience section (best placement)
     if (expSection) {
-        const bullets = expSection.text.split("\n").filter((l) => /^[•·▪▸→\-–—*]/.test(l.trim()));
+        const bullets = expSection.text.split("\n").filter((l) => /^[•·▪▸→\-–-*]/.test(l.trim()));
         for (const bullet of bullets) {
             for (const pattern of allAliasPatterns) {
                 if (pattern.test(bullet)) {

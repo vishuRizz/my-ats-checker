@@ -1,5 +1,5 @@
 // ============================================================
-// Drizzle ORM Schema — ATS Checker (Neon PostgreSQL)
+// Drizzle ORM Schema - ATS Checker (Neon PostgreSQL)
 // All tables use pgvector for embeddings (Phase 2)
 // ============================================================
 

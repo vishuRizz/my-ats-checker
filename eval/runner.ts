@@ -32,7 +32,7 @@ const DIM    = (s: string) => `\x1b[2m${s}\x1b[0m`;
 const CYAN   = (s: string) => `\x1b[36m${s}\x1b[0m`;
 
 async function runEval() {
-  console.log(BOLD("\n🚀 ATS Checker — Full Evaluation Suite\n"));
+  console.log(BOLD("\n🚀 ATS Checker - Full Evaluation Suite\n"));
   console.log(CYAN("   Covers: synthetic fixtures + golden test + negative fixtures\n"));
 
   let groundTruth: GroundTruth[];
@@ -47,7 +47,7 @@ async function runEval() {
   // Add golden test (the real resume + JD)
   const goldenTest: GroundTruth = {
     filename: "golden-resume.pdf",
-    description: "Real resume + GoComet JD — golden fixture",
+    description: "Real resume + GoComet JD - golden fixture",
     expectedSections: ["summary", "experience", "projects", "skills", "education"],
     expectedName: "Vishu Pratap",
     expectedEmail: "vishurizz0@gmail.com",
@@ -156,7 +156,7 @@ async function runEval() {
       results.push({ filename: truth.filename, pass, issues });
 
       const status = pass ? GREEN("[PASS]") : RED("[FAIL]");
-      console.log(`${status} ${truth.filename}${truth.description ? DIM(` — ${truth.description}`) : ""}`);
+      console.log(`${status} ${truth.filename}${truth.description ? DIM(` - ${truth.description}`) : ""}`);
       for (const issue of issues) {
         console.log(`       ${YELLOW("⚠")} ${issue}`);
       }

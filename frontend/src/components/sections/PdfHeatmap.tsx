@@ -15,8 +15,8 @@ const REASON_COLORS: Record<string, { fill: string; stroke: string; label: strin
   table_scramble:   { fill: "rgba(245,158,11,0.25)",  stroke: "#f59e0b", label: "Table cell (may scramble)" },
   column_merge:     { fill: "rgba(245,158,11,0.25)",  stroke: "#f59e0b", label: "Multi-column merge risk" },
   multi_column:     { fill: "rgba(245,158,11,0.25)",  stroke: "#f59e0b", label: "Multi-column region" },
-  icon_font:        { fill: "rgba(139,92,246,0.25)",  stroke: "#8b5cf6", label: "Icon font (text lost)" },
-  ocr_low_conf:     { fill: "rgba(99,102,241,0.2)",   stroke: "#6366f1", label: "Low OCR confidence" },
+  icon_font:        { fill: "rgba(212,212,216,0.15)", stroke: "#d4d4d8", label: "Icon font (text lost)" },
+  ocr_low_conf:     { fill: "rgba(161,161,170,0.15)", stroke: "#a1a1aa", label: "Low OCR confidence" },
 };
 
 export function PdfHeatmap({ file, lostRegions }: PdfHeatmapProps) {

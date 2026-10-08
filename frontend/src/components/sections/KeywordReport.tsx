@@ -55,7 +55,7 @@ export function KeywordReport({ report }: { report: KeywordReportType }) {
             <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--amber)", margin: 0 }}>
               🧠 Semantic Matches (AI-detected)
             </h3>
-            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }} title="These terms mean the same thing but don't match exactly. Some ATS systems do exact match only — consider adding the exact term.">
+            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }} title="These terms mean the same thing but don't match exactly. Some ATS systems do exact match only - consider adding the exact term.">
               ℹ️
             </span>
           </div>

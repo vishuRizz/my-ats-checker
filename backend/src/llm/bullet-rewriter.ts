@@ -1,5 +1,5 @@
 // ============================================================
-// Bullet Rewriter — Groq LLM rewrite with strict JSON schema
+// Bullet Rewriter - Groq LLM rewrite with strict JSON schema
 // PRD §6.10: grounded in resume text only, never fabricates
 // ============================================================
 
@@ -26,21 +26,21 @@ export interface BulletSuggestion {
 const SYSTEM_PROMPT = `You are an expert resume editor specialising in ATS optimisation and impact-driven writing.
 Your ONLY job is to rewrite resume bullet points to be stronger, more specific, and keyword-aligned.
 
-STRICT RULES — violating any rule is a failure:
+STRICT RULES - violating any rule is a failure:
 1. NEVER add a skill, tool, technology, company, or fact that is not already in the provided bullet or resume context.
 2. NEVER invent metrics, percentages, or numbers. If a metric would improve a bullet but none exist, use [NUMBER] or [METRIC] as a placeholder and set needs_user_proof to true.
 3. Each suggestion must quote the exact phrase from the original that supports it in grounded_in.
 4. Start every rewritten bullet with a strong past-tense action verb (Built, Led, Reduced, Optimised, Delivered, Increased, etc.).
 5. Keep bullets under 150 characters where possible.
-6. Output ONLY valid JSON — no prose, no markdown, no explanation outside the JSON.`;
+6. Output ONLY valid JSON - no prose, no markdown, no explanation outside the JSON.`;
 
 const OUTPUT_SCHEMA = `{
   "bullets": [
     {
-      "original": "string — exact original bullet text",
-      "suggested": "string — rewritten bullet",
-      "rationale": "string — one sentence explaining the improvement",
-      "grounded_in": "string — exact phrase from the original that supports this rewrite",
+      "original": "string - exact original bullet text",
+      "suggested": "string - rewritten bullet",
+      "rationale": "string - one sentence explaining the improvement",
+      "grounded_in": "string - exact phrase from the original that supports this rewrite",
       "needs_user_proof": false,
       "improvement_type": "quantify | action_verb | specificity | keyword_alignment | conciseness"
     }
@@ -83,7 +83,7 @@ async function rewriteBatch(
       ? `\nTarget JD keywords to weave in ONLY IF the resume already demonstrates them: ${jdKeywords.slice(0, 20).join(", ")}`
       : "";
 
-  const userPrompt = `RESUME CONTEXT (for grounding only — do not add anything not here):
+  const userPrompt = `RESUME CONTEXT (for grounding only - do not add anything not here):
 ---
 ${resumeContext.slice(0, 2000)}
 ---
@@ -146,7 +146,7 @@ ${OUTPUT_SCHEMA}`;
 function sanitizeSuggestion(suggested: string, original: string): string {
   // Simple check: if suggested is way longer than original it may be hallucinating
   if (suggested.length > original.length * 2.5) {
-    return original; // return original unchanged — safer than a bad suggestion
+    return original; // return original unchanged - safer than a bad suggestion
   }
   return suggested;
 }
@@ -173,7 +173,7 @@ function fallbackTip(bullet: ExtractedBullet): BulletSuggestion {
     rationale = "Start with a strong past-tense action verb (e.g., Built, Led, Reduced, Delivered).";
     improvementType = "action_verb";
   } else if (!hasMetric) {
-    rationale = "Add a quantifiable result — how many, how much, how fast? Use [NUMBER] as a placeholder if unsure.";
+    rationale = "Add a quantifiable result - how many, how much, how fast? Use [NUMBER] as a placeholder if unsure.";
     improvementType = "quantify";
   } else {
     rationale = "Consider adding more specificity about the technology used or the scope of impact.";

@@ -125,7 +125,7 @@ export async function extractPDFText(buffer: Buffer): Promise<RawPDFData> {
         }
       }
     } catch {
-      // Annotations are optional — don't fail the whole parse
+      // Annotations are optional - don't fail the whole parse
     }
   }
 
@@ -212,13 +212,13 @@ export function detectMultiColumn(
 
 // ─── Header/footer detection (improved) ───────────────────────
 // Only flag text in the page margin on MULTI-PAGE documents.
-// On a 1-page resume, the "header" area is just the contact block — don't flag it.
+// On a 1-page resume, the "header" area is just the contact block - don't flag it.
 export function detectHeaderFooterItems(
   items: TextItem[],
   pageHeights: number[],
   pageCount: number
 ): { headerItems: TextItem[]; footerItems: TextItem[] } {
-  // On a single-page file, never flag header/footer — it's just the contact block.
+  // On a single-page file, never flag header/footer - it's just the contact block.
   if (pageCount === 1) {
     return { headerItems: [], footerItems: [] };
   }

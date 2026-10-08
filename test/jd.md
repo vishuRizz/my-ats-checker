@@ -1,25 +1,25 @@
 Full-stack AI Engineer
 Nova Platform | GoComet
 
-Team Nova — Autonomous Outcome Engineering (AOE)
+Team Nova - Autonomous Outcome Engineering (AOE)
 
 The short version
-We’re building Nova — a governed AI platform that rewires how enterprise logistics actually
+We’re building Nova - a governed AI platform that rewires how enterprise logistics actually
 works. Not dashboards. Not chatbots. Real agentic workflows that extract documents, validate
-data, orchestrate multi-step approvals, and make decisions — all running on structured
+data, orchestrate multi-step approvals, and make decisions - all running on structured
 knowledge, not vibes.
 You’ll write production code, sit in front of enterprise clients, and ship AI-powered workflows
-from day one. If you want a role where you build and think and ship — not just one of the three
-— keep reading.
+from day one. If you want a role where you build and think and ship - not just one of the three
+- keep reading.
 
 What you’ll actually do
-Build real things. You’ll write production code across the full stack — React frontends,
+Build real things. You’ll write production code across the full stack - React frontends,
 Python/Node backends, ClickHouse queries, Kafka event pipelines, LangGraph agent
 workflows, and YAML-driven process definitions. Not prototypes. Not demos. Stuff that runs in
 production for real companies moving real cargo across real oceans.
 Talk to enterprise clients. You’ll sit across from logistics managers, freight forwarders, and
-operations leads. You’ll listen to their messy, exception-filled processes — 6 approval levels, 4
-document types, 3 systems that don’t talk to each other — and turn that chaos into structured
+operations leads. You’ll listen to their messy, exception-filled processes - 6 approval levels, 4
+document types, 3 systems that don’t talk to each other - and turn that chaos into structured
 workflows they can actually use. This isn’t optional. It’s the job.
 Think AI-first. Every problem you encounter, your first question should be: “Can an agent
 handle this?” Not “let me build a CRUD app.” You’ll design agents that extract fields from Bills of
@@ -32,18 +32,18 @@ what breaks. The FDE model means you own outcomes, not tasks.
 
 What Nova actually is
 Nova is GoComet’s platform transformation. Four pillars:
-Workflow Orchestrator — Configurable, visual, multi-step business processes. Clients define
+Workflow Orchestrator - Configurable, visual, multi-step business processes. Clients define
 their own approval chains, routing logic, and automation triggers through a drag-and-drop graph
-editor. YAML under the hood. React Flow on the screen. Zero hardcoded business logic — the
+editor. YAML under the hood. React Flow on the screen. Zero hardcoded business logic - the
 engine is completely generic.
-Agents Orchestrator — AI agents that handle analytics, document extraction, validation,
+Agents Orchestrator - AI agents that handle analytics, document extraction, validation,
 monitoring, and recommendations. Built on LangGraph with a five-stage pipeline: scope
 resolution → context compilation → schema routing → plan + execute → evidence delivery.
 Every agent runs with governed business context, not ad-hoc prompting.
-No-Code App Builder — Custom micro-apps attached to workflow steps. When a workflow
-node needs more than Approve/Reject — a rate comparison panel, a document review
-interface, an exception dashboard — it’s built here.
-Data Layer — Unified ingestion from GoComet products, external sources, and client uploads.
+No-Code App Builder - Custom micro-apps attached to workflow steps. When a workflow
+node needs more than Approve/Reject - a rate comparison panel, a document review
+interface, an exception dashboard - it’s built here.
+Data Layer - Unified ingestion from GoComet products, external sources, and client uploads.
 ClickHouse as the analytical store. Everything tagged, mapped, and queryable. Tenant-isolated
 by construction.
 
@@ -64,14 +64,14 @@ up any of it in a week.
 
 What we’re looking for
 The non-negotiables
-You can code. Full-stack, independently, at production quality. You’ve built things — not just
+You can code. Full-stack, independently, at production quality. You’ve built things - not just
 assignments, but projects, tools, systems that other people actually used. You’re comfortable
 across the stack and you don’t need hand-holding to ship a feature.
 You can communicate. You can explain a technical architecture to a non-technical client. You
 can run a discovery call. You can write a clear document. You can present without slides being
 your crutch. This is not a “nice to have.” Half the job is translating between the worlds of
 technology and business.
-You can think. When someone describes a messy process, you don’t just nod — you ask why
+You can think. When someone describes a messy process, you don’t just nod - you ask why
 before how. You spot patterns underneath apparent chaos. You push back on unnecessary
 complexity. You can hold a system in your head and reason about what happens when things
 go wrong.
@@ -80,8 +80,8 @@ two client calls and a week of reading, can hold their own in a conversation abo
 Lading, demurrage charges, and incoterm implications. Domain knowledge is teachable.
 Curiosity and raw learning speed are not.
 Strong signals
-• You’ve built something with LLMs — not just used ChatGPT, but actually integrated an
-LLM into a working system. Prompt engineering, tool use, agents, RAG — any of it.
+• You’ve built something with LLMs - not just used ChatGPT, but actually integrated an
+LLM into a working system. Prompt engineering, tool use, agents, RAG - any of it.
 • You’ve worked on a side project or open-source contribution that required you to
 understand a domain outside of CS.
 • You can take a vague, messy brief and turn it into a structured plan without needing
@@ -99,20 +99,20 @@ architecture.
 
 Why this is different from your other offers
 You won’t be a cog. At a large company, you’ll own a microservice. Here, you’ll own an entire
-client’s AI workflow — from the discovery call to the production deployment. Your work has a
+client’s AI workflow - from the discovery call to the production deployment. Your work has a
 name, a client, and a measurable outcome attached to it.
 You’ll work with AI that actually matters. Not a chatbot wrapper. Not a “summarize this PDF”
-feature. You’ll build governed AI agents that make real decisions in enterprise environments —
+feature. You’ll build governed AI agents that make real decisions in enterprise environments -
 with tenant isolation, audit trails, evidence grounding, and cost controls.
 You’ll learn two things at once. Most roles teach you engineering or business. This one forces
 you to get good at both. After two years, you’ll understand how enterprise software, AI systems,
-and real-world logistics operations actually work — a combination that’s rare and extremely
+and real-world logistics operations actually work - a combination that’s rare and extremely
 valuable.
 You’ll ship from week one. Nova is being built right now. You’re not joining a maintenance
 team. You’re joining the founding team of GoComet’s biggest platform bet. The codebase is
 young, the decisions are live, and your fingerprints will be on the architecture.
 You’ll work directly with leadership. The AOE model means you operate as a 2-in-a-box pair
-— one engineer (you), one client partner. No three layers of management between you and
+- one engineer (you), one client partner. No three layers of management between you and
 impact.
 About GoComet
 GoComet is a supply chain visibility and automation platform used by enterprises across 30+
@@ -120,5 +120,5 @@ countries. We track shipments across ocean, air, road, and rail. We manage procu
 contracts, invoices, and compliance. And now, with Nova, we’re building the AI-native operating
 layer that ties it all together.
 Logistics moves $12 trillion in goods every year. Most of it still runs on spreadsheets, email
-chains, and phone calls. We’re fixing that — not with another dashboard, but with intelligent,
+chains, and phone calls. We’re fixing that - not with another dashboard, but with intelligent,
 governed, agent-driven automation.

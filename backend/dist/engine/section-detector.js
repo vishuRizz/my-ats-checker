@@ -92,7 +92,7 @@ function isLikelyHeading(item, avgFontSize) {
     if (text.length === 0 || text.length > 60)
         return false;
     // Check if it matches any known section synonym
-    const normalized = text.toLowerCase().replace(/[:\-–—|]/g, "").trim();
+    const normalized = text.toLowerCase().replace(/[:\-–-|]/g, "").trim();
     if (SYNONYM_LOOKUP.has(normalized))
         return true;
     // Also check if it's a heading-like text (bold, larger font, all caps, etc.)
@@ -106,7 +106,7 @@ function isLikelyHeading(item, avgFontSize) {
  * Returns null if not a known section.
  */
 function normalizeHeading(text) {
-    const normalized = text.toLowerCase().replace(/[:\-–—|•·]/g, "").trim();
+    const normalized = text.toLowerCase().replace(/[:\-–-|•·]/g, "").trim();
     return SYNONYM_LOOKUP.get(normalized) || null;
 }
 /**
@@ -153,7 +153,7 @@ function detectSections(items, fullText) {
         i++;
     }
     if (headings.length === 0) {
-        // No sections detected — treat whole text as unlabeled
+        // No sections detected - treat whole text as unlabeled
         return [{
                 name: "unlabeled",
                 rawHeading: "",
@@ -246,7 +246,7 @@ function extractName(text) {
 function extractSkillsList(text) {
     // Skills are usually comma-separated or newline-separated
     const skills = text
-        .replace(/[•·▪▸→\-–—]/g, ",")
+        .replace(/[•·▪▸→\-–-]/g, ",")
         .split(/[,\n|]/)
         .map((s) => s.trim())
         .filter((s) => s.length > 1 && s.length < 50);
@@ -255,7 +255,7 @@ function extractSkillsList(text) {
 function extractExperienceEntries(text) {
     // Simple extraction: split by date patterns or company-like lines
     const entries = [];
-    const datePattern = /(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}|\d{4})\s*[-–—to]+\s*(present|current|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}|\d{4})/gi;
+    const datePattern = /(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}|\d{4})\s*[-–-to]+\s*(present|current|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}|\d{4})/gi;
     let match;
     const positions = [];
     while ((match = datePattern.exec(text)) !== null) {

@@ -12,7 +12,7 @@
   },
   {
     "filename": "two-col-designer.pdf",
-    "description": "Two-column designer resume (sidebar layout) — negative fixture: multi-col MUST be detected",
+    "description": "Two-column designer resume (sidebar layout) - negative fixture: multi-col MUST be detected",
     "expectedSections": ["experience", "education", "skills"],
     "expectedName": "Alex Rivera",
     "expectedEmail": "alex.rivera@email.com",

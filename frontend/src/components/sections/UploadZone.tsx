@@ -56,10 +56,7 @@ export function UploadZone({ onAnalyze, jdText, onJdChange }: UploadZoneProps) {
   };
 
   return (
-    <div style={{
-      maxWidth: 760, margin: "0 auto", padding: "0 24px 80px",
-      animation: "fadeInUp 0.7s ease-out 0.1s both",
-    }}>
+    <div className="max-w-3xl mx-auto px-6 pb-20 animate-fade-in-up">
       {/* Drop Zone */}
       <div
         className={`dropzone ${dragOver ? "drag-over" : ""}`}
@@ -86,20 +83,13 @@ export function UploadZone({ onAnalyze, jdText, onJdChange }: UploadZoneProps) {
 
         {!file ? (
           <>
-            <div style={{
-              width: 72, height: 72, borderRadius: 18,
-              background: "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))",
-              border: "1px solid rgba(99,102,241,0.3)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "2rem", margin: "0 auto 20px",
-              animation: "float 3s ease-in-out infinite",
-            }}>
+            <div className="w-20 h-20 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-3xl mx-auto mb-6 shadow-inner">
               📄
             </div>
-            <h3 style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: 8, color: "var(--text-primary)" }}>
+            <h3 className="text-xl font-bold mb-2 text-white">
               Drop your resume here
             </h3>
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: 16 }}>
+            <p className="text-zinc-400 text-sm mb-6">
               or click to browse files
             </p>
             <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
@@ -127,12 +117,7 @@ export function UploadZone({ onAnalyze, jdText, onJdChange }: UploadZoneProps) {
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             {/* File icon */}
-            <div style={{
-              width: 52, height: 52, borderRadius: 12,
-              background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "1.5rem", flexShrink: 0,
-            }}>
+            <div className="w-14 h-14 rounded-xl bg-zinc-800 flex items-center justify-center text-2xl shrink-0 text-white shadow-inner border border-zinc-700">
               {file.name.toLowerCase().endsWith(".pdf") ? "📄" : "📝"}
             </div>
 
@@ -185,7 +170,7 @@ export function UploadZone({ onAnalyze, jdText, onJdChange }: UploadZoneProps) {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{
               width: 28, height: 28, borderRadius: 7,
-              background: jdExpanded ? "rgba(99,102,241,0.2)" : "var(--bg-elevated)",
+              background: jdExpanded ? "#27272a" : "var(--bg-elevated)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: "0.9rem", transition: "background 0.2s",
             }}>
@@ -237,7 +222,7 @@ We're looking for a Senior Software Engineer with 5+ years of experience in Reac
                 outline: "none",
                 transition: "border-color 0.2s",
               }}
-              onFocus={(e) => { e.target.style.borderColor = "rgba(99,102,241,0.5)"; }}
+              onFocus={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.5)"; }}
               onBlur={(e) => { e.target.style.borderColor = "var(--border)"; }}
             />
             {jdText && (
@@ -251,11 +236,10 @@ We're looking for a Senior Software Engineer with 5+ years of experience in Reac
 
       {/* Submit */}
       <button
-        className="btn-primary"
+        className="w-full shimmer-btn bg-white text-zinc-950 hover:bg-zinc-200 rounded-full px-8 h-14 text-base font-medium shadow-lg shadow-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         onClick={handleSubmit}
         disabled={!file}
         id="analyze-button"
-        style={{ width: "100%", padding: "16px", fontSize: "1rem" }}
       >
         {file ? `Analyze "${file.name.length > 30 ? file.name.slice(0, 28) + "…" : file.name}"` : "Upload a Resume to Analyze"}
       </button>

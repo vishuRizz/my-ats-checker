@@ -1,6 +1,6 @@
 "use strict";
 // ============================================================
-// Engine Index — Main parse() and analyze() interface
+// Engine Index - Main parse() and analyze() interface
 // PRD §4: "parse(file) → ParseResult, analyze(parse, jd) → Analysis"
 // ============================================================
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -24,7 +24,7 @@ function detectFileType(buffer) {
     }
     // DOCX magic bytes: PK (zip archive - Office Open XML)
     if (buffer[0] === 0x50 && buffer[1] === 0x4b) {
-        // Further check: could be docx/xlsx/pptx — check content type
+        // Further check: could be docx/xlsx/pptx - check content type
         // We'll rely on the API route to also pass MIME type for disambiguation
         return "docx";
     }
@@ -35,7 +35,7 @@ function detectFileType(buffer) {
  * Accepts PDF or DOCX, max 5MB enforced by the route handler.
  */
 async function parse(buffer, mimeType, filename) {
-    // Validate size (5MB max — PRD §6.1)
+    // Validate size (5MB max - PRD §6.1)
     const MAX_SIZE = 5 * 1024 * 1024;
     if (buffer.length > MAX_SIZE) {
         throw new Error(`File too large: ${(buffer.length / 1024 / 1024).toFixed(1)}MB. Maximum is 5MB.`);

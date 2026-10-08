@@ -1,5 +1,5 @@
 // ============================================================
-// Groq Client — Round-robin across up to 4 API keys
+// Groq Client - Round-robin across up to 4 API keys
 // Falls back to next key on rate limit (429) or error
 // ============================================================
 
@@ -76,7 +76,7 @@ export async function groqChat(
       });
 
       if (res.status === 429 || res.status === 503) {
-        // Rate limited — try next key
+        // Rate limited - try next key
         lastError = new Error(`Groq rate limit on attempt ${attempt + 1}`);
         continue;
       }

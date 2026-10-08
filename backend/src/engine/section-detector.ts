@@ -7,14 +7,14 @@
 //   OR styled (bold/larger) AND match a known synonym
 // - "Portfolio", "Languages" inline in a link-bar are NOT headings (they share a y-row)
 // - Dedup: merge same canonical sections; keep first occurrence, append text
-// - Contact is an ENTITY (email+phone), NOT a section — removed from section detection
+// - Contact is an ENTITY (email+phone), NOT a section - removed from section detection
 //   and removed from "required sections" rule check
 // - "Languages" in skills section map kept but gated by alone-on-line requirement
 // ============================================================
 
 import type { Section, TextItem } from "./types.js";
 
-// Canonical section names (contact removed — it's an entity, not a section)
+// Canonical section names (contact removed - it's an entity, not a section)
 const SECTION_MAP: Record<string, string[]> = {
   summary: [
     "summary", "professional summary", "executive summary", "career summary",
@@ -86,7 +86,7 @@ for (const [canonical, synonyms] of Object.entries(SECTION_MAP)) {
  * Check if a text item is a section heading.
  *
  * STRICT criteria (both required):
- *   1. It is alone on its line (no other text item within ±6pt of its y0) — this
+ *   1. It is alone on its line (no other text item within ±6pt of its y0) - this
  *      prevents "Portfolio" in a link row from being a heading.
  *   2. It matches a known synonym OR is styled (bold or larger font).
  *
@@ -101,7 +101,7 @@ function isLikelyHeading(
   const text = item.text.trim();
   if (text.length === 0 || text.length > 60) return false;
 
-  const normalized = text.toLowerCase().replace(/[:\-–—|•·]/g, "").trim();
+  const normalized = text.toLowerCase().replace(/[:\-–-|•·]/g, "").trim();
   const isSynonymMatch = SYNONYM_LOOKUP.has(normalized);
 
   // A heading must be the only meaningful text on its line
@@ -125,7 +125,7 @@ function isLikelyHeading(
 }
 
 function normalizeHeading(text: string): string | null {
-  const normalized = text.toLowerCase().replace(/[:\-–—|•·]/g, "").trim();
+  const normalized = text.toLowerCase().replace(/[:\-–-|•·]/g, "").trim();
   return SYNONYM_LOOKUP.get(normalized) || null;
 }
 
@@ -228,10 +228,10 @@ export function detectSections(items: TextItem[], fullText: string): Section[] {
  * Contact is treated as an entity (email + phone), not a section.
  */
 export function extractEntities(text: string, sections: Section[]) {
-  // Email — strict pattern
+  // Email - strict pattern
   const emailMatch = text.match(/\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/);
 
-  // Phone — 7-15 digits with optional formatting
+  // Phone - 7-15 digits with optional formatting
   // Be precise: avoid matching years or zip codes
   const phoneMatch = text.match(
     /(?<!\d)(?:\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}(?!\d)|(?<!\d)\d{10}(?!\d)/
@@ -322,7 +322,7 @@ function extractSkillsList(text: string): string[] {
       const nextLabel = chunk.search(/\b(?:Languages|Frameworks|Databases|Developer|Other|Tools|Technologies)\b/i);
       const relevant = nextLabel > 0 ? chunk.slice(0, nextLabel) : chunk;
       const parts = relevant
-        .replace(/[•·▪▸→–—]/g, ",")  // em-dash, bullet chars — but NOT hyphens (they appear in skill names like "Third-party")
+        .replace(/[•·▪▸→–-]/g, ",")  // em-dash, bullet chars - but NOT hyphens (they appear in skill names like "Third-party")
         .replace(/\s-\s/g, ",")        // " - " with spaces → comma delimiter
         .split(/[,;]/)
         .map((s) => s.trim())
@@ -335,7 +335,7 @@ function extractSkillsList(text: string): string[] {
     for (const line of lines) {
       const stripped = line.replace(/^[^:]+:\s*/, "").trim();
       const parts = stripped
-        .replace(/[•·▪▸→\-–—]/g, ",")
+        .replace(/[•·▪▸→\-–-]/g, ",")
         .split(/[,;]/)
         .map((s) => s.trim())
         .filter((s) => s.length > 1 && s.length < 50 && !/^\d+$/.test(s));
@@ -348,10 +348,10 @@ function extractSkillsList(text: string): string[] {
 
 function extractExperienceEntries(text: string) {
   const entries: any[] = [];
-  // Match job title — company — date lines
+  // Match job title - company - date lines
   // Pattern: lines that have a year range or "Present"
   const lines = text.split("\n");
-  const datePattern = /(\d{4})\s*[-–—]\s*(\d{4}|[Pp]resent|[Cc]urrent)/;
+  const datePattern = /(\d{4})\s*[-–-]\s*(\d{4}|[Pp]resent|[Cc]urrent)/;
 
   let currentEntry: any = null;
   for (const line of lines) {
@@ -360,7 +360,7 @@ function extractExperienceEntries(text: string) {
 
     const dateMatch = trimmed.match(datePattern);
     if (dateMatch) {
-      // This line contains a date range — likely a job title line
+      // This line contains a date range - likely a job title line
       if (currentEntry) entries.push(currentEntry);
       currentEntry = {
         raw: trimmed,

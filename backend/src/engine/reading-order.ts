@@ -38,10 +38,10 @@ function joinLineItems(items: TextItem[], gapThreshold = 0.4): string {
     if (gap > threshold) {
       result += " " + curr.text;
     } else if (gap > -1) {
-      // Close but not overlapping — no space needed (e.g. "Node.js")
+      // Close but not overlapping - no space needed (e.g. "Node.js")
       result += curr.text;
     } else {
-      // Overlapping (negative gap) — same text chunk, no separator
+      // Overlapping (negative gap) - same text chunk, no separator
       result += curr.text;
     }
   }
@@ -140,7 +140,7 @@ export function reconstructReadingOrder(
           x1: Math.max(...group.map((r) => r.bbox.x1)),
           y1: Math.max(...group.map((r) => r.bbox.y1)),
         },
-        text: `${group.length} regions — e.g. "${group[0].text?.slice(0, 60) ?? ""}"`,
+        text: `${group.length} regions - e.g. "${group[0].text?.slice(0, 60) ?? ""}"`,
       };
       lostRegions.push(merged);
     }

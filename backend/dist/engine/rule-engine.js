@@ -1,6 +1,6 @@
 "use strict";
 // ============================================================
-// Rule Engine — 10 formatting rules for Phase 1 (PRD §6.4)
+// Rule Engine - 10 formatting rules for Phase 1 (PRD §6.4)
 // Each rule: id, severity, message, explanation, fix, pointsLost
 // Rules are data-driven: config + pure functions
 // ============================================================
@@ -35,7 +35,7 @@ const RULES = [
         pointsLost: 50,
         check: (p) => ({ triggered: p.isImageOnly }),
         message: () => "PDF has no text layer (image-only / scanned)",
-        explanation: "This PDF contains only images — there is no machine-readable text. An ATS cannot extract anything from it. This is a critical issue.",
+        explanation: "This PDF contains only images - there is no machine-readable text. An ATS cannot extract anything from it. This is a critical issue.",
         fix: "Export the resume from a word processor (Word, Google Docs) as a text-based PDF. Do not scan a printed version or save as image-based PDF.",
     },
     // ─── Rule 4: Missing core sections ───────────────────────────
@@ -122,10 +122,10 @@ const RULES = [
                 return { triggered: false };
             const bullets = expSection.text
                 .split("\n")
-                .filter((l) => l.trim().match(/^[•·▪▸→\-–—*]/));
+                .filter((l) => l.trim().match(/^[•·▪▸→\-–-*]/));
             const longBullets = bullets.filter((b) => b.length > 200);
             const noActionVerb = bullets.filter((b) => {
-                const words = b.replace(/^[•·▪▸→\-–—*\s]+/, "").split(/\s+/);
+                const words = b.replace(/^[•·▪▸→\-–-*\s]+/, "").split(/\s+/);
                 if (words.length === 0)
                     return false;
                 return !/^[A-Z]/.test(words[0]) || words[0].length < 3;

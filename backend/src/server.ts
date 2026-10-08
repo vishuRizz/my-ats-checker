@@ -1,5 +1,5 @@
 // ============================================================
-// Fastify Server — ATS Checker Backend
+// Fastify Server - ATS Checker Backend
 // Routes: POST /api/analyze
 // ============================================================
 

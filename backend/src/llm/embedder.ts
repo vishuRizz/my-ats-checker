@@ -1,5 +1,5 @@
 // ============================================================
-// Embedder — Uses Xenova/transformers for local embeddings
+// Embedder - Uses Xenova/transformers for local embeddings
 // No API cost, deterministic, runs in-process.
 // ============================================================
 

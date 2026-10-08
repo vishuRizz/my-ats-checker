@@ -1,5 +1,5 @@
 // ============================================================
-// Engine Index — Main parse() and analyze() interface
+// Engine Index - Main parse() and analyze() interface
 // PRD §4: "parse(file) → ParseResult, analyze(parse, jd) → Analysis"
 // ============================================================
 
@@ -148,7 +148,7 @@ export async function parse(
         "Verify all your text is selectable in a PDF viewer."
       : `Lower than expected text density (${Math.round(textToPageRatio)} elements/page). ` +
         "Some content may be in images or text boxes that ATS parsers skip. " +
-        "Try selecting all text in your PDF viewer — if you can't select it, ATS can't read it.";
+        "Try selecting all text in your PDF viewer - if you can't select it, ATS can't read it.";
   } else if (isMultiColumn || hasHeaderFooterContent) {
     parsabilityRisk = "low";
     parsabilityReason =

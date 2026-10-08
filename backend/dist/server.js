@@ -1,6 +1,6 @@
 "use strict";
 // ============================================================
-// Fastify Server — ATS Checker Backend
+// Fastify Server - ATS Checker Backend
 // Routes: POST /api/analyze
 // ============================================================
 var __importDefault = (this && this.__importDefault) || function (mod) {

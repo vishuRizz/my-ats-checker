@@ -2,59 +2,22 @@
 
 export function HeroSection() {
   return (
-    <section style={{
-      padding: "80px 24px 40px",
-      textAlign: "center",
-      maxWidth: 900,
-      margin: "0 auto",
-      animation: "fadeInUp 0.7s ease-out",
-    }}>
+    <section className="pt-20 pb-10 px-6 text-center max-w-4xl mx-auto animate-fade-in-up">
       {/* Badge */}
-      <div style={{
-        display: "inline-flex", alignItems: "center", gap: 8,
-        padding: "6px 16px", borderRadius: 99,
-        background: "rgba(99,102,241,0.1)",
-        border: "1px solid rgba(99,102,241,0.25)",
-        marginBottom: 28,
-      }}>
-        <span style={{
-          width: 8, height: 8, borderRadius: "50%",
-          background: "#10b981",
-          display: "inline-block",
-          animation: "pulse-glow 2s ease-in-out infinite",
-        }} />
-        <span style={{ fontSize: "0.83rem", color: "#a5b4fc", fontWeight: 500 }}>
-          Transparent ATS analysis — no magic numbers
+      <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 mb-8">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-glow" />
+        <span className="text-sm font-medium text-zinc-400">
+          Transparent ATS analysis - no magic numbers
         </span>
       </div>
 
       {/* Headline */}
-      <h1 style={{
-        fontSize: "clamp(2rem, 6vw, 3.8rem)",
-        fontWeight: 900,
-        lineHeight: 1.15,
-        letterSpacing: "-0.03em",
-        marginBottom: 20,
-      }}>
-        <span style={{ color: "var(--text-primary)" }}>See what the</span>{" "}
-        <span style={{
-          background: "linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          backgroundClip: "text",
-        }}>
-          ATS actually sees
-        </span>
+      <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight text-white mb-6" style={{ fontFamily: "var(--font-cal-sans), sans-serif" }}>
+        See what the <span className="text-zinc-500">ATS actually sees</span>
       </h1>
 
       {/* Subheadline */}
-      <p style={{
-        fontSize: "clamp(1rem, 2.5vw, 1.2rem)",
-        color: "var(--text-secondary)",
-        lineHeight: 1.7,
-        maxWidth: 640,
-        margin: "0 auto 48px",
-      }}>
+      <p className="text-lg sm:text-xl text-zinc-400 leading-relaxed max-w-2xl mx-auto mb-12">
         Upload your resume and get a full parse analysis: exactly what text was extracted,
         what was lost, formatting issues, and a keyword match against the job description.
       </p>
@@ -91,7 +54,7 @@ export function HeroSection() {
       }}>
         ⚖️ No ATS publishes a universal score. We show&nbsp;
         <em>parse analysis</em>, <em>match analysis</em>, and&nbsp;
-        <em>estimated scores</em> — never claim to guarantee a pass.
+        <em>estimated scores</em> - never claim to guarantee a pass.
       </p>
     </section>
   );

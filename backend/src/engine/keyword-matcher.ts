@@ -6,7 +6,7 @@
 // - Extract keywords from REQUIREMENT-CONTEXT lines only
 //   (tech list section prefixed "You don't need to know all" → soft/nice-to-have)
 // - Treat "Node.js" as ONE token, not "node" + "js"
-// - "go"/"Go" only matches Golang context — not "GoComet", "going", "to go"
+// - "go"/"Go" only matches Golang context - not "GoComet", "going", "to go"
 // - Strip company name boilerplate from extraction
 // - Tier by JD headings: non-negotiables > strong signals > tech list (soft)
 // - Alias taxonomy: LangGraph, RAG, agents → match "Applied AI/LLMs" semantically
@@ -20,12 +20,12 @@ import type { ParseResult } from "./types.js";
 // Maps canonical skill → [exact aliases that count as a match]
 // Each alias is matched as a WHOLE WORD (not substring).
 const ALIAS_MAP: Record<string, string[]> = {
-  "javascript":    ["javascript", "ecmascript", "es6", "es2015", "es2020"],  // 'js' removed — causes false positives in "Node.js", ".js"
+  "javascript":    ["javascript", "ecmascript", "es6", "es2015", "es2020"],  // 'js' removed - causes false positives in "Node.js", ".js"
   "typescript":    ["typescript", "ts"],
   "python":        ["python", "python3"],
   "react":         ["react", "reactjs", "react.js"],
   "react native":  ["react native", "react-native"],
-  "node.js":       ["node.js", "nodejs"],    // bare 'node' removed — caused 'node16', 'node_modules' matches
+  "node.js":       ["node.js", "nodejs"],    // bare 'node' removed - caused 'node16', 'node_modules' matches
   "next.js":       ["next.js", "nextjs"],
   "vue":           ["vue", "vuejs", "vue.js"],
   "angular":       ["angular", "angularjs"],
@@ -43,7 +43,7 @@ const ALIAS_MAP: Record<string, string[]> = {
   "java":          ["java"],
   "c++":           ["c++", "cpp"],
   "c#":            ["c#", "csharp", ".net"],
-  // "go"/"golang" — must be bounded by start/end of word AND context-filtered
+  // "go"/"golang" - must be bounded by start/end of word AND context-filtered
   "golang":        ["golang", "go"],   // matched with extra guard (see matchGolang)
   "rust":          ["rust"],
   "sql":           ["sql", "mysql", "mssql"],
@@ -125,7 +125,7 @@ function getJDTier(jdLines: string[], lineIdx: number): "required" | "strong_sig
 // not inside a word (GoComet, going, go-live, ago, etc.)
 function isGolangMention(line: string, match: string): boolean {
   if (match.toLowerCase() === "golang") return true;
-  // "Go" — must be standalone word with programming context nearby
+  // "Go" - must be standalone word with programming context nearby
   const idx = line.toLowerCase().indexOf("go");
   if (idx < 0) return false;
   // Check it's a whole word
@@ -281,7 +281,7 @@ function checkPlacement(
     }
   }
 
-  // Check projects section (counts but at lower weight — signals context)
+  // Check projects section (counts but at lower weight - signals context)
   if (projectsSection) {
     for (const { pattern } of allPatterns) {
       pattern.lastIndex = 0;

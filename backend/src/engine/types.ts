@@ -1,5 +1,5 @@
 // ============================================================
-// ATS Checker Engine — Shared Types
+// ATS Checker Engine - Shared Types
 // These types mirror the JSON shapes in PRD §5.2
 // ============================================================
 
@@ -142,9 +142,9 @@ export interface JDRequirement {
 }
 
 export type KeywordPlacement =
-  | "bullet_with_context"   // in experience bullets — strongest signal
-  | "projects_context"      // in projects section — context signal
-  | "skills_list_only"      // only in skills list — weaker signal
+  | "bullet_with_context"   // in experience bullets - strongest signal
+  | "projects_context"      // in projects section - context signal
+  | "skills_list_only"      // only in skills list - weaker signal
   | "missing";              // not found
 
 export interface KeywordMatch {

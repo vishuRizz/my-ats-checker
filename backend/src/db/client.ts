@@ -1,7 +1,7 @@
 // ============================================================
-// Neon DB Client — uses @neondatabase/serverless
+// Neon DB Client - uses @neondatabase/serverless
 // Single connection pool, shared across the app
-// DATABASE_URL is optional in Phase 1 dev mode — persistence
+// DATABASE_URL is optional in Phase 1 dev mode - persistence
 // is silently skipped if not configured.
 // ============================================================
 
@@ -17,7 +17,7 @@ if (process.env.DATABASE_URL) {
   const sql = neon(process.env.DATABASE_URL);
   db = drizzle(sql, { schema });
 } else {
-  console.warn("[db] DATABASE_URL not set — persistence disabled. Set it to enable saved scans.");
+  console.warn("[db] DATABASE_URL not set - persistence disabled. Set it to enable saved scans.");
 }
 
 export { db };

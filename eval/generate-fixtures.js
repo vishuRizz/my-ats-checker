@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // ============================================================
-// Eval Fixture Generator — v2
+// Eval Fixture Generator - v2
 // Creates synthetic PDF and DOCX resume fixtures for the eval set.
-// Uses only synthetic data — no real PII. (PRD §11)
+// Uses only synthetic data - no real PII. (PRD §11)
 // Run: node generate-fixtures.js
 // ============================================================
 "use strict";
@@ -25,7 +25,7 @@ function buildPDF(pages) {
   };
 
   addObj(`<< /Type /Catalog /Pages 2 0 R >>`); // 1
-  addObj(null);                                  // 2 — pages dict placeholder
+  addObj(null);                                  // 2 - pages dict placeholder
   const fontId = addObj(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>`);
 
   const pageIds = pages.map((lines) => {
@@ -112,7 +112,7 @@ function buildDOCX(paragraphs) {
   ]);
 }
 
-// ─── Minimal ZIP builder (no compression — store only) ─────────
+// ─── Minimal ZIP builder (no compression - store only) ─────────
 function buildZip(entries) {
   const localHeaders = [];
   const centralDir = [];
@@ -300,7 +300,7 @@ function buildTwoColPDF() {
   // Left column: main content at x=50, width ~250pt
   // Right column: sidebar at x=330, width ~220pt
   const ops = [
-    // Header — name
+    // Header - name
     `BT /F2 16 Tf 50 750 Td (Alex Rivera) Tj ET`,
     `BT /F1 10 Tf 50 735 Td (alex.rivera@email.com | 555-987-6543) Tj ET`,
 
@@ -318,7 +318,7 @@ function buildTwoColPDF() {
     `BT /F1 10 Tf 50 555 Td (Thesis: Human-centered design in fintech) Tj ET`,
     `BT /F1 10 Tf 50 540 Td (Graduated with honors) Tj ET`,
 
-    // Right column (sidebar at x=330) — skills, tools, contact
+    // Right column (sidebar at x=330) - skills, tools, contact
     `BT /F2 12 Tf 330 710 Td (SKILLS) Tj ET`,
     `BT /F1 10 Tf 330 695 Td (Figma) Tj ET`,
     `BT /F1 10 Tf 330 680 Td (Adobe XD) Tj ET`,

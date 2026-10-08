@@ -1,5 +1,5 @@
 // ============================================================
-// Shared Types for Frontend — mirrors backend engine/types.ts
+// Shared Types for Frontend - mirrors backend engine/types.ts
 // ============================================================
 
 export type Severity = "critical" | "warning" | "info";

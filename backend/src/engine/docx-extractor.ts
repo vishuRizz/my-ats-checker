@@ -1,5 +1,5 @@
 // ============================================================
-// DOCX Extractor — Phase 1
+// DOCX Extractor - Phase 1
 // Uses mammoth.js to extract text and structure from DOCX files
 // ============================================================
 

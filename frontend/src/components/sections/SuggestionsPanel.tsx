@@ -35,7 +35,7 @@ interface SuggestionsPanelProps {
 
 const IMPROVEMENT_LABELS: Record<ImprovementType, { label: string; color: string; bg: string }> = {
   quantify:           { label: "Add Metric",       color: "#f59e0b", bg: "rgba(245,158,11,0.1)" },
-  action_verb:        { label: "Action Verb",       color: "#6366f1", bg: "rgba(99,102,241,0.1)" },
+  action_verb:        { label: "Action Verb",       color: "#d4d4d8", bg: "rgba(255,255,255,0.1)" },
   specificity:        { label: "More Specific",     color: "#8b5cf6", bg: "rgba(139,92,246,0.1)" },
   keyword_alignment:  { label: "Keyword Aligned",   color: "#10b981", bg: "rgba(16,185,129,0.1)" },
   conciseness:        { label: "More Concise",      color: "#06b6d4", bg: "rgba(6,182,212,0.1)" },
@@ -94,8 +94,8 @@ export function SuggestionsPanel({ data, jdText }: SuggestionsPanelProps) {
       }}>
         <div style={{
           width: 72, height: 72, borderRadius: 18,
-          background: "linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))",
-          border: "1px solid rgba(99,102,241,0.25)",
+          background: "linear-gradient(135deg, #27272a, #18181b)",
+          border: "1px solid #3f3f46",
           display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem",
         }}>✨</div>
         <div>
@@ -103,7 +103,7 @@ export function SuggestionsPanel({ data, jdText }: SuggestionsPanelProps) {
             AI Bullet Rewrites
           </h3>
           <p style={{ fontSize: "0.88rem", color: "var(--text-muted)", maxWidth: 440, lineHeight: 1.65 }}>
-            Get AI-powered rewrites for your experience bullets — stronger action verbs, better metrics framing,
+            Get AI-powered rewrites for your experience bullets - stronger action verbs, better metrics framing,
             and keyword alignment with the JD.
             {!jdText && " Add a job description for best results."}
           </p>
@@ -116,11 +116,11 @@ export function SuggestionsPanel({ data, jdText }: SuggestionsPanelProps) {
           id="run-ai-rewrites-button"
           style={{
             padding: "12px 28px",
-            background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-            border: "none", borderRadius: 10, color: "white",
+            background: "#ffffff",
+            border: "1px solid #e4e4e7", borderRadius: 10, color: "#09090b",
             fontWeight: 700, fontSize: "0.95rem", cursor: "pointer",
-            boxShadow: "0 4px 14px rgba(99,102,241,0.35)",
-            transition: "transform 0.2s",
+            boxShadow: "0 4px 14px rgba(255,255,255,0.1)",
+            transition: "all 0.2s",
           }}
           onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
           onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
@@ -142,8 +142,8 @@ export function SuggestionsPanel({ data, jdText }: SuggestionsPanelProps) {
       }}>
         <div style={{
           width: 48, height: 48, borderRadius: "50%",
-          border: "3px solid rgba(99,102,241,0.2)",
-          borderTopColor: "#6366f1",
+          border: "3px solid rgba(255,255,255,0.2)",
+          borderTopColor: "#ffffff",
           animation: "spin 0.8s linear infinite",
         }} />
         <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>

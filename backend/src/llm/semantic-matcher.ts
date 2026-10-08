@@ -1,5 +1,5 @@
 // ============================================================
-// Semantic Matcher — Computes cosine similarity between JD 
+// Semantic Matcher - Computes cosine similarity between JD 
 // keywords and Resume entities/skills
 // ============================================================
 

@@ -33,18 +33,18 @@ export function computeScore(
 
   if (parseResult.isImageOnly) {
     parseDeduct += 50;
-    parseItems.push({ description: "Image-only PDF — no text layer", pointsLost: 50, severity: "critical", fix: "Export as text-based PDF from a word processor." });
+    parseItems.push({ description: "Image-only PDF - no text layer", pointsLost: 50, severity: "critical", fix: "Export as text-based PDF from a word processor." });
   }
   if (parseResult.isMultiColumn) {
     parseDeduct += 15;
-    parseItems.push({ description: "Multi-column layout detected — reading order may scramble", pointsLost: 15, severity: "critical", fix: "Use a single-column layout so ATS reads top-to-bottom." });
+    parseItems.push({ description: "Multi-column layout detected - reading order may scramble", pointsLost: 15, severity: "critical", fix: "Use a single-column layout so ATS reads top-to-bottom." });
   }
   if (parseResult.hasHeaderFooterContent) {
     parseDeduct += 10;
     parseItems.push({ description: "Contact info in PDF header/footer region (skipped by most ATS)", pointsLost: 10, severity: "critical", fix: "Move name, email, phone into the main body of the document." });
   }
 
-  // Lost regions grouped (not noise — already deduplicated by reading-order)
+  // Lost regions grouped (not noise - already deduplicated by reading-order)
   const lostGroupCount = parseResult.lostRegions.filter(r => r.reason === "column_merge").length;
   if (lostGroupCount > 0 && parseResult.isMultiColumn) {
     const deduct = Math.min(10, lostGroupCount * 5);
@@ -88,7 +88,7 @@ export function computeScore(
   if (yearOnlyDates > monthYearDates && yearOnlyDates > 2) {
     const deduct = 5;
     formatDeduct += deduct;
-    formatItems.push({ description: `Year-only dates detected (${yearOnlyDates} found) — ATS may not calculate experience duration correctly`, pointsLost: deduct, severity: "warning", fix: "Use 'Mon YYYY – Present' format (e.g., 'Jan 2022 – Present') for all date ranges." });
+    formatItems.push({ description: `Year-only dates detected (${yearOnlyDates} found) - ATS may not calculate experience duration correctly`, pointsLost: deduct, severity: "warning", fix: "Use 'Mon YYYY – Present' format (e.g., 'Jan 2022 – Present') for all date ranges." });
   }
 
   const formattingRisks: ScoreCategory = {
@@ -146,7 +146,7 @@ export function computeScore(
     if (noTech.length > bulletLines.length * 0.5) {
       const d = 8;
       bulletDeduct += d;
-      bulletItems.push({ description: `${noTech.length} bullets mention no specific technology`, pointsLost: d, severity: "info", fix: "Name the specific tools/languages used in each bullet — ATS matches keywords in context." });
+      bulletItems.push({ description: `${noTech.length} bullets mention no specific technology`, pointsLost: d, severity: "info", fix: "Name the specific tools/languages used in each bullet - ATS matches keywords in context." });
     }
     if (tooLong.length > 0) {
       const d = 5;
@@ -192,12 +192,12 @@ export function computeScore(
         description: `Required: "${m.keyword}" not found in resume`,
         pointsLost: Math.round(70 / Math.max(nonSoftRequired, 1)),
         severity: "critical",
-        fix: `Add "${m.keyword}" in context — ideally inside an experience bullet describing work you've done with it.`,
+        fix: `Add "${m.keyword}" in context - ideally inside an experience bullet describing work you've done with it.`,
       });
     }
     for (const m of missingNice.slice(0, 4)) {
       kwItems.push({
-        description: `Preferred: "${m.keyword}" not found (${m.tier === "soft" ? "soft requirement — low priority" : "strong signal"})`,
+        description: `Preferred: "${m.keyword}" not found (${m.tier === "soft" ? "soft requirement - low priority" : "strong signal"})`,
         pointsLost: Math.round(30 / Math.max(niceTotal, 1)),
         severity: m.tier === "soft" ? "info" : "warning",
         fix: `Add "${m.keyword}" if you have experience with it.`,
@@ -211,7 +211,7 @@ export function computeScore(
       items: kwItems,
     };
 
-    // ─── Experience Relevance — continuous scale ──────────────
+    // ─── Experience Relevance - continuous scale ──────────────
     // Matched keywords weighted by placement quality:
     //   bullet_with_context → 1.0
     //   projects_context    → 0.6
@@ -252,7 +252,7 @@ export function computeScore(
     }
     if (relevanceItems.length === 0) {
       relevanceItems.push({
-        description: `${bulletMatchCount}/${allMatched.length} matched keywords appear in experience/project bullets — strong ATS signal`,
+        description: `${bulletMatchCount}/${allMatched.length} matched keywords appear in experience/project bullets - strong ATS signal`,
         pointsLost: 0,
         severity: "info" as Severity,
         fix: "",

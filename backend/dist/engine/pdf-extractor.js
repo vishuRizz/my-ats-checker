@@ -52,7 +52,7 @@ async function getPdfjs() {
     if (_pdfjsLib)
         return _pdfjsLib;
     _pdfjsLib = await Promise.resolve().then(() => __importStar(require("pdfjs-dist")));
-    // Disable web worker — not available in Node.js
+    // Disable web worker - not available in Node.js
     if (_pdfjsLib.GlobalWorkerOptions) {
         _pdfjsLib.GlobalWorkerOptions.workerSrc = "";
     }

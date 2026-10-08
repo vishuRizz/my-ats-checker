@@ -1,5 +1,5 @@
 // ============================================================
-// Export Utility — generates a full ATS Analysis Report
+// Export Utility - generates a full ATS Analysis Report
 // Supports: PDF (jsPDF + autotable) and DOCX (docx.js)
 // ============================================================
 
@@ -104,7 +104,7 @@ export async function exportPDF(data: AnalysisResponse, filename: string) {
   };
 
   // ══════════════════════════════════════════
-  // PAGE 1 — COVER
+  // PAGE 1 - COVER
   // ══════════════════════════════════════════
   doc.setFillColor(...DARK);
   doc.rect(0, 0, pageW, 60, "F");
@@ -170,7 +170,7 @@ export async function exportPDF(data: AnalysisResponse, filename: string) {
   }
 
   // ══════════════════════════════════════════
-  // SECTION 1 — EXTRACTED ENTITIES
+  // SECTION 1 - EXTRACTED ENTITIES
   // ══════════════════════════════════════════
   heading1("1. Extracted Contact & Entities");
 
@@ -179,8 +179,8 @@ export async function exportPDF(data: AnalysisResponse, filename: string) {
     ["Name", entities.name.value || "Not found", `${Math.round(entities.name.confidence * 100)}%`],
     ["Email", entities.email.value || "Not found", `${Math.round(entities.email.confidence * 100)}%`],
     ["Phone", entities.phone.value || "Not found", `${Math.round(entities.phone.confidence * 100)}%`],
-    ["Links", entities.links.join(", ") || "None", "—"],
-    ["Skills (extracted)", entities.skills.slice(0, 20).join(", ") || "None", "—"],
+    ["Links", entities.links.join(", ") || "None", "-"],
+    ["Skills (extracted)", entities.skills.slice(0, 20).join(", ") || "None", "-"],
   ];
 
   autoTable(doc, {
@@ -216,7 +216,7 @@ export async function exportPDF(data: AnalysisResponse, filename: string) {
   y = (doc as any).lastAutoTable.finalY + 8;
 
   // ══════════════════════════════════════════
-  // SECTION 2 — FORMATTING RULES
+  // SECTION 2 - FORMATTING RULES
   // ══════════════════════════════════════════
   heading1("2. Formatting Rules & Issues");
 
@@ -269,7 +269,7 @@ export async function exportPDF(data: AnalysisResponse, filename: string) {
   }
 
   // ══════════════════════════════════════════
-  // SECTION 3 — SCORE BREAKDOWN
+  // SECTION 3 - SCORE BREAKDOWN
   // ══════════════════════════════════════════
   heading1("3. Score Breakdown");
 
@@ -309,7 +309,7 @@ export async function exportPDF(data: AnalysisResponse, filename: string) {
   }
 
   // ══════════════════════════════════════════
-  // SECTION 4 — KEYWORD MATCH (if JD provided)
+  // SECTION 4 - KEYWORD MATCH (if JD provided)
   // ══════════════════════════════════════════
   if (data.keywordReport) {
     heading1("4. Keyword Match Analysis");
@@ -332,13 +332,13 @@ export async function exportPDF(data: AnalysisResponse, filename: string) {
         m.isRequired ? "Required" : "Nice-to-have",
         "✅ Matched",
         m.placement === "bullet_with_context" ? "Strong (in bullet)" : "Weak (skills list only)",
-        m.context ? `"...${m.context.slice(0, 60)}..."` : "—",
+        m.context ? `"...${m.context.slice(0, 60)}..."` : "-",
       ]),
       ...kr.missing.map((m) => [
         m.keyword,
         m.isRequired ? "Required" : "Nice-to-have",
         "❌ Missing",
-        "—",
+        "-",
         "Not found in resume",
       ]),
     ];
@@ -367,7 +367,7 @@ export async function exportPDF(data: AnalysisResponse, filename: string) {
   }
 
   // ══════════════════════════════════════════
-  // SECTION 5 — RAW EXTRACTED TEXT
+  // SECTION 5 - RAW EXTRACTED TEXT
   // ══════════════════════════════════════════
   heading1(`${data.keywordReport ? "5" : "4"}. Raw Extracted Text (Reading Order)`);
 
@@ -398,7 +398,7 @@ export async function exportPDF(data: AnalysisResponse, filename: string) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(...MUTED);
-    doc.text("ATS Checker — ats-checker.app · Parse analysis only. Not a guarantee of ATS pass.", margin, h - 4);
+    doc.text("ATS Checker - ats-checker.app · Parse analysis only. Not a guarantee of ATS pass.", margin, h - 4);
     doc.text(`Page ${p} / ${pageCount}`, pageW - margin, h - 4, { align: "right" });
   }
 
@@ -514,7 +514,7 @@ export async function exportDOCX(data: AnalysisResponse, filename: string) {
       spacing: { after: 100 },
     }),
     new Paragraph({
-      children: [new TextRun({ text: `Overall Score: ${scoreBreakdown.overall}/100  —  ${scoreBreakdown.estimatedLabel}`, bold: true, size: 28, color: "10B981" })],
+      children: [new TextRun({ text: `Overall Score: ${scoreBreakdown.overall}/100  -  ${scoreBreakdown.estimatedLabel}`, bold: true, size: 28, color: "10B981" })],
       alignment: AlignmentType.CENTER,
       spacing: { after: 400 },
     }),
@@ -533,14 +533,14 @@ export async function exportDOCX(data: AnalysisResponse, filename: string) {
   );
   sections.push(h2("Detected Sections"));
   for (const s of parseResult.sections) {
-    sections.push(bullet(`${s.name.toUpperCase()} — found as "${s.rawHeading}" (Page ${s.startPage}, ${Math.round(s.confidence * 100)}% confidence)`));
+    sections.push(bullet(`${s.name.toUpperCase()} - found as "${s.rawHeading}" (Page ${s.startPage}, ${Math.round(s.confidence * 100)}% confidence)`));
   }
   sections.push(hr());
 
   // 2. RULES
   sections.push(h1("2. Formatting Rules & Issues"));
   if (rules.length === 0) {
-    sections.push(p("✅ No formatting issues detected — perfect formatting!", { color: "10B981", bold: true }));
+    sections.push(p("✅ No formatting issues detected - perfect formatting!", { color: "10B981", bold: true }));
   } else {
     for (const rule of [...rules].sort((a, b) => {
       const w = { critical: 3, warning: 2, info: 1 };
@@ -569,7 +569,7 @@ export async function exportDOCX(data: AnalysisResponse, filename: string) {
 
   // 3. SCORE BREAKDOWN
   sections.push(h1("3. Score Breakdown"));
-  sections.push(p(`Overall: ${scoreBreakdown.overall}/100 — ${scoreBreakdown.estimatedLabel}`, { bold: true, color: "6366F1" }));
+  sections.push(p(`Overall: ${scoreBreakdown.overall}/100 - ${scoreBreakdown.estimatedLabel}`, { bold: true, color: "6366F1" }));
   const cats = [
     scoreBreakdown.parseIntegrity,
     scoreBreakdown.formattingRisks,
@@ -580,7 +580,7 @@ export async function exportDOCX(data: AnalysisResponse, filename: string) {
   for (const cat of cats) {
     sections.push(h2(`${cat.name}: ${cat.score}/100`));
     if (cat.items.length === 0) {
-      sections.push(bullet("No deductions — perfect score in this category"));
+      sections.push(bullet("No deductions - perfect score in this category"));
     } else {
       for (const item of cat.items) {
         sections.push(bullet(`−${item.pointsLost}pt: ${item.description} → Fix: ${item.fix}`));
@@ -598,7 +598,7 @@ export async function exportDOCX(data: AnalysisResponse, filename: string) {
 
     sections.push(h2("Matched Keywords"));
     for (const m of keywordReport.matched) {
-      sections.push(bullet(`✅ ${m.keyword} [${m.isRequired ? "Required" : "Nice-to-have"}] — ${m.placement === "bullet_with_context" ? "Strong (in bullet)" : "Weak (skills list only)"}`));
+      sections.push(bullet(`✅ ${m.keyword} [${m.isRequired ? "Required" : "Nice-to-have"}] - ${m.placement === "bullet_with_context" ? "Strong (in bullet)" : "Weak (skills list only)"}`));
     }
 
     sections.push(h2("Missing Keywords"));
@@ -627,7 +627,7 @@ export async function exportDOCX(data: AnalysisResponse, filename: string) {
   // ── Assemble ──
   const doc = new Document({
     creator: "ATS Checker",
-    title: `ATS Analysis Report — ${filename}`,
+    title: `ATS Analysis Report - ${filename}`,
     description: "Transparent ATS resume parse and keyword analysis",
     sections: [{ children: sections }],
   });
