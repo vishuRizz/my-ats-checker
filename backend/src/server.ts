@@ -7,6 +7,9 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { parse, analyze } from "./engine/index";
+import { extractBullets } from "./engine/bullet-extractor";
+import { rewriteBullets } from "./llm/bullet-rewriter";
+import { extractJDRequirements } from "./engine/keyword-matcher";
 import { db } from "./db/client";
 import { resumes, analyses } from "./db/schema";
 
@@ -145,6 +148,7 @@ fastify.post("/api/analyze", async (request, reply) => {
         totalTimeMs: totalTime,
         filename,
         fileSize: fileBuffer.length,
+        jdText: jdText ?? undefined,
       },
     });
   } catch (err: any) {
@@ -162,6 +166,78 @@ fastify.post("/api/analyze", async (request, reply) => {
     return reply.status(isUserError ? 400 : 500).send({
       error: isUserError ? "parse_error" : "internal_error",
       message,
+    });
+  }
+});
+
+// ─── POST /api/suggest ────────────────────────────────────────
+// Accepts JSON body: { parseResult: ParseResult, jdText?: string }
+// Returns: { suggestions: BulletSuggestion[], source: "llm" | "rule_based" }
+
+const suggestCallsPerIp = new Map<string, { count: number; resetAt: number }>();
+const SUGGEST_LIMIT = 5; // free calls per hour per IP
+
+fastify.post("/api/suggest", async (request, reply) => {
+  // Simple IP-based rate limiting
+  const ip = request.ip ?? "unknown";
+  const now = Date.now();
+  const record = suggestCallsPerIp.get(ip);
+  if (record && record.resetAt > now && record.count >= SUGGEST_LIMIT) {
+    return reply.status(429).send({
+      error: "rate_limited",
+      message: `Free AI rewrite limit reached (${SUGGEST_LIMIT}/hour). Try again later.`,
+      resetAt: record.resetAt,
+    });
+  }
+  if (!record || record.resetAt <= now) {
+    suggestCallsPerIp.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 });
+  } else {
+    record.count++;
+  }
+
+  try {
+    const body = request.body as any;
+    if (!body?.parseResult) {
+      return reply.status(400).send({ error: "missing_parse_result", message: "parseResult is required." });
+    }
+
+    const parseResult = body.parseResult;
+    const jdText: string = body.jdText ?? "";
+
+    // Extract bullets from parse result
+    const bullets = extractBullets(parseResult);
+    if (bullets.length === 0) {
+      return reply.status(200).send({
+        suggestions: [],
+        source: "none",
+        message: "No bullet points found in experience or projects sections.",
+      });
+    }
+
+    // Extract JD keywords for alignment hints
+    const jdKeywords = jdText.trim().length > 20
+      ? extractJDRequirements(jdText).map((r) => r.keyword)
+      : [];
+
+    // Call Groq rewriter
+    const suggestions = await rewriteBullets(bullets, jdKeywords, parseResult.bestEffortText ?? "");
+
+    const usedLLM = suggestions.some((s) => s.suggested !== s.original);
+
+    fastify.log.info(
+      { bulletCount: bullets.length, suggestionCount: suggestions.length, usedLLM },
+      "Suggest complete"
+    );
+
+    return reply.status(200).send({
+      suggestions,
+      source: usedLLM ? "llm" : "rule_based",
+    });
+  } catch (err: any) {
+    fastify.log.error(err, "Suggest error");
+    return reply.status(500).send({
+      error: "suggest_error",
+      message: err?.message || "Failed to generate suggestions.",
     });
   }
 });

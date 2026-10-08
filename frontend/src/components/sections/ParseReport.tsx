@@ -23,14 +23,75 @@ type ViewMode = "heatmap" | "text" | "split";
 
 export function ParseReport({ parseResult, resumeFile }: ParseReportProps) {
   const { entities, sections, bestEffortText, readingOrderText, lostRegions, warnings } = parseResult;
+  const { parsabilityRisk, parsabilityReason, textToPageRatio } = parseResult;
   const [viewMode, setViewMode] = useState<ViewMode>(resumeFile ? "split" : "text");
   const [showAtsOrder, setShowAtsOrder] = useState(false);
 
   const hasPdf = !!resumeFile && parseResult.fileType === "pdf";
   const lostCount = lostRegions.length;
 
+  const riskConfig = parsabilityRisk === "high" ? {
+    bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.35)", iconBg: "rgba(239,68,68,0.15)",
+    icon: "🚨", label: "ATS Cannot Read This Resume", color: "#ef4444", badge: "HIGH RISK",
+  } : parsabilityRisk === "medium" ? {
+    bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.35)", iconBg: "rgba(245,158,11,0.15)",
+    icon: "⚠️", label: "Low ATS Readability Detected", color: "#f59e0b", badge: "MEDIUM RISK",
+  } : parsabilityRisk === "low" ? {
+    bg: "rgba(99,102,241,0.06)", border: "rgba(99,102,241,0.2)", iconBg: "rgba(99,102,241,0.1)",
+    icon: "ℹ️", label: "Potential ATS Readability Issues", color: "#6366f1", badge: "LOW RISK",
+  } : null;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+      {/* ─── Parsability Risk Banner (Gap 3) ──────────────────────── */}
+      {riskConfig && (
+        <div style={{
+          padding: "16px 20px", borderRadius: 12,
+          background: riskConfig.bg, border: `1px solid ${riskConfig.border}`,
+          display: "flex", gap: 16, alignItems: "flex-start",
+        }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+            background: riskConfig.iconBg,
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem",
+          }}>
+            {riskConfig.icon}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+              <strong style={{ fontSize: "0.95rem", color: riskConfig.color }}>{riskConfig.label}</strong>
+              <span style={{
+                fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.06em",
+                background: riskConfig.color, color: "#fff",
+                padding: "2px 7px", borderRadius: 99,
+              }}>{riskConfig.badge}</span>
+            </div>
+            <p style={{ fontSize: "0.84rem", color: "var(--text-secondary)", lineHeight: 1.65, margin: 0 }}>
+              {parsabilityReason}
+            </p>
+            {parsabilityRisk === "high" && (
+              <div style={{
+                marginTop: 12, padding: "10px 14px", borderRadius: 8,
+                background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)",
+              }}>
+                <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6 }}>
+                  <strong style={{ color: riskConfig.color }}>How to fix: </strong>
+                  {parseResult.isImageOnly
+                    ? "Open in Google Docs or Word and export as PDF. Never scan a printed resume. Avoid Canva's \"Image PDF\" export — use their ATS-friendly text export instead."
+                    : "Try selecting all text in your PDF viewer. If you cannot select the text, ATS cannot read it. Re-create in Google Docs or Microsoft Word and export as PDF."}
+                </p>
+              </div>
+            )}
+            {textToPageRatio > 0 && (
+              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: "8px 0 0", fontFamily: "monospace" }}>
+                {textToPageRatio} text elements/page extracted
+                {textToPageRatio < 60 ? " (expected 80–200+ for a standard resume)" : " ✓ normal density"}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ─── Warnings Banner ──────────────────────────────────────── */}
       {warnings.length > 0 && (

@@ -3,23 +3,29 @@
 import type { KeywordReport as KeywordReportType } from "@/types";
 
 export function KeywordReport({ report }: { report: KeywordReportType }) {
-  const { matched, missing, matchRate, requiredMatchRate, niceToHaveMatchRate } = report;
+  const { matched, missing, matchRate, requiredMatchRate, niceToHaveMatchRate, semanticMatches, semanticMatchRate } = report;
 
   const requiredMatched = matched.filter(m => m.isRequired);
   const niceMatched = matched.filter(m => !m.isRequired);
   const requiredMissing = missing.filter(m => m.isRequired);
   const niceMissing = missing.filter(m => !m.isRequired);
+  const hasSemanticMatches = semanticMatches && semanticMatches.length > 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       
       {/* Overview Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-        <div className="card" style={{ padding: 20, textAlign: "center" }}>
+        <div className="card" style={{ padding: 20, textAlign: "center", position: "relative" }}>
           <div style={{ fontSize: "2rem", fontWeight: 800, color: matchRate >= 70 ? "var(--green)" : matchRate >= 40 ? "var(--amber)" : "var(--red)" }}>
             {matchRate}%
           </div>
-          <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>Overall Match</div>
+          <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>Exact Match</div>
+          {hasSemanticMatches && (
+            <div style={{ fontSize: "0.75rem", color: "var(--amber)", marginTop: 4, fontWeight: 600 }}>
+              + Semantic Match: {semanticMatchRate}%
+            </div>
+          )}
         </div>
         
         <div className="card" style={{ padding: 20, textAlign: "center" }}>
@@ -42,6 +48,34 @@ export function KeywordReport({ report }: { report: KeywordReportType }) {
           </div>
         </div>
       </div>
+
+      {hasSemanticMatches && (
+        <div className="card" style={{ padding: 24, border: "1px solid rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.03)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--amber)", margin: 0 }}>
+              🧠 Semantic Matches (AI-detected)
+            </h3>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }} title="These terms mean the same thing but don't match exactly. Some ATS systems do exact match only — consider adding the exact term.">
+              ℹ️
+            </span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {semanticMatches.map((m, i) => (
+              <div key={`sem-${i}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "var(--bg-elevated)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                <span style={{ color: "var(--amber)" }}>≈</span>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>"{m.jdKeyword}"</span>
+                  <span style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>found as</span>
+                  <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>"{m.resumeTerm}"</span>
+                </div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", background: "rgba(255,255,255,0.05)", padding: "2px 6px", borderRadius: 4 }}>
+                  {Math.round(m.similarity * 100)}% match
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
         {/* Required Skills */}

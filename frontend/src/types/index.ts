@@ -49,6 +49,11 @@ export interface ParseResult {
   isMultiColumn: boolean;
   hasHeaderFooterContent: boolean;
   parserVersion: string;
+  // Gap 3
+  parsabilityRisk: "high" | "medium" | "low" | "none";
+  parsabilityReason: string;
+  textItemCount: number;
+  textToPageRatio: number;
 }
 
 export interface RuleResult {
@@ -77,6 +82,9 @@ export interface KeywordReport {
   matchRate: number;
   requiredMatchRate: number;
   niceToHaveMatchRate: number;
+  // Gap 2 (Phase 2)
+  semanticMatches?: { jdKeyword: string; resumeTerm: string; similarity: number }[];
+  semanticMatchRate?: number;
 }
 
 export interface ScoreCategory {
@@ -113,6 +121,7 @@ export interface AnalysisResponse {
     totalTimeMs: number;
     filename: string;
     fileSize: number;
+    jdText?: string;
   };
 }
 

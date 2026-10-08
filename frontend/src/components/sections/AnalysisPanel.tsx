@@ -8,6 +8,7 @@ import { RulesPanel } from "./RulesPanel";
 import { ParseReport } from "./ParseReport";
 import { KeywordReport } from "./KeywordReport";
 import { ScorePanel } from "./ScorePanel";
+import { SuggestionsPanel } from "./SuggestionsPanel";
 
 interface AnalysisPanelProps {
   data: AnalysisResponse;
@@ -16,7 +17,7 @@ interface AnalysisPanelProps {
   onReset: () => void;
 }
 
-type Tab = "parse" | "rules" | "score" | "keywords";
+type Tab = "parse" | "rules" | "score" | "keywords" | "suggest";
 
 export function AnalysisPanel({ data, filename, resumeFile, onReset }: AnalysisPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("parse");
@@ -40,7 +41,8 @@ export function AnalysisPanel({ data, filename, resumeFile, onReset }: AnalysisP
         label: "🎯 Keyword Match",
         badge: `${keywordReport.matchRate}%`,
         badgeColor: keywordReport.matchRate >= 70 ? "var(--green)" : keywordReport.matchRate >= 40 ? "var(--amber)" : "var(--red)",
-      }]
+      },
+      { id: "suggest" as Tab, label: "✨ AI Rewrites" }]
       : []),
   ];
 
@@ -162,6 +164,7 @@ export function AnalysisPanel({ data, filename, resumeFile, onReset }: AnalysisP
         {activeTab === "rules" && <RulesPanel rules={rules} />}
         {activeTab === "score" && <ScorePanel scoreBreakdown={scoreBreakdown} />}
         {activeTab === "keywords" && keywordReport && <KeywordReport report={keywordReport} />}
+        {activeTab === "suggest" && <SuggestionsPanel data={data} jdText={meta?.jdText} />}
       </div>
     </div>
   );

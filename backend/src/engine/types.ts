@@ -89,6 +89,8 @@ export interface ParseWarning {
   page?: number;
 }
 
+export type ParsabilityRisk = "high" | "medium" | "low" | "none";
+
 export interface ParseResult {
   fileType: "pdf" | "docx";
   pageCount: number;
@@ -102,6 +104,11 @@ export interface ParseResult {
   isMultiColumn: boolean;
   hasHeaderFooterContent: boolean;
   parserVersion: string;
+  // Gap 3: ATS parsability risk
+  parsabilityRisk: ParsabilityRisk;
+  parsabilityReason: string;        // human-readable explanation
+  textItemCount: number;            // raw count of extracted text items
+  textToPageRatio: number;          // items per page (< 30 = suspicious)
 }
 
 // ============================================================
@@ -159,6 +166,13 @@ export interface KeywordReport {
   matchRate: number;          // 0-100
   requiredMatchRate: number;  // 0-100
   niceToHaveMatchRate: number;
+  // Gap 2: semantic matches (added in Phase 2)
+  semanticMatches?: {
+    jdKeyword: string;
+    resumeTerm: string;
+    similarity: number;
+  }[];
+  semanticMatchRate?: number;
 }
 
 // ============================================================

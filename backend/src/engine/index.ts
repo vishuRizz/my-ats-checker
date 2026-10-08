@@ -121,6 +121,42 @@ export async function parse(
     (entities as any).linkAnnotations = links;
   }
 
+  // ── Parsability Risk Assessment (Gap 3) ──────────────────────
+  const textItemCount = textItems.length;
+  const textToPageRatio = pageCount > 0 ? textItemCount / pageCount : 0;
+  const suspiciousName = /canva|design|template|creative|infographic|portfolio/i.test(filename);
+
+  let parsabilityRisk: import("./types.js").ParsabilityRisk = "none";
+  let parsabilityReason = "";
+
+  if (isImageOnly) {
+    parsabilityRisk = "high";
+    parsabilityReason =
+      "This PDF has no text layer. ATS parsers will see a completely blank document and extract nothing. " +
+      "This is most common with scanned resumes, Canva exports saved as images, or photos of a resume.";
+  } else if (fileType === "pdf" && textToPageRatio < 25 && pageCount <= 3) {
+    parsabilityRisk = "high";
+    parsabilityReason =
+      `Only ${Math.round(textToPageRatio)} text elements extracted per page (expected 80–200+). ` +
+      "This usually means the resume uses heavy graphics, embedded images for text, or was exported from a design tool. " +
+      "Most of your content is likely invisible to ATS.";
+  } else if (fileType === "pdf" && (textToPageRatio < 60 || suspiciousName)) {
+    parsabilityRisk = "medium";
+    parsabilityReason = suspiciousName
+      ? "The filename suggests a design template (Canva, Figma, etc.). " +
+        "Designed resumes often embed text as images which ATS cannot read. " +
+        "Verify all your text is selectable in a PDF viewer."
+      : `Lower than expected text density (${Math.round(textToPageRatio)} elements/page). ` +
+        "Some content may be in images or text boxes that ATS parsers skip. " +
+        "Try selecting all text in your PDF viewer — if you can't select it, ATS can't read it.";
+  } else if (isMultiColumn || hasHeaderFooterContent) {
+    parsabilityRisk = "low";
+    parsabilityReason =
+      "Multi-column layout or header/footer content detected. " +
+      "ATS parsers may scramble or skip some content. " +
+      "See formatting rules for specific fixes.";
+  }
+
   return {
     fileType,
     pageCount,
@@ -134,8 +170,15 @@ export async function parse(
     isMultiColumn,
     hasHeaderFooterContent: hasHeaderFooterContent || hasTable,
     parserVersion: PARSER_VERSION,
+    parsabilityRisk,
+    parsabilityReason,
+    textItemCount,
+    textToPageRatio: Math.round(textToPageRatio),
   };
 }
+
+
+import { findSemanticMatches } from "../llm/semantic-matcher.js";
 
 export async function analyze(
   parseResult: ParseResult,
@@ -148,6 +191,31 @@ export async function analyze(
     const jdRequirements = extractJDRequirements(jdText);
     if (jdRequirements.length > 0) {
       keywordReport = matchKeywords(jdRequirements, parseResult);
+      
+      // Perform Semantic Matching for missing keywords
+      const missingKeywords = keywordReport.missing.map(m => m.keyword);
+      if (missingKeywords.length > 0) {
+        // Collect all extracted skills and entities for comparison
+        const resumeSkills = [
+          ...parseResult.entities.skills,
+          ...parseResult.entities.experience.flatMap(e => e.bullets), // use bullets as context
+        ];
+        
+        // Basic unique filtering
+        const uniqueSkills = Array.from(new Set(resumeSkills)).filter(s => s.trim().length > 2);
+        
+        const semanticMatches = await findSemanticMatches(missingKeywords, uniqueSkills);
+        if (semanticMatches.length > 0) {
+          keywordReport.semanticMatches = semanticMatches;
+          
+          // Optionally compute a semantic match rate based on how many missing ones were semantically found
+          const numSemantic = new Set(semanticMatches.map(m => m.jdKeyword)).size;
+          const totalReqs = jdRequirements.length;
+          // Add semantic matched count to the original matched count
+          const originalMatchedCount = keywordReport.matched.length;
+          keywordReport.semanticMatchRate = Math.round(((originalMatchedCount + numSemantic) / totalReqs) * 100);
+        }
+      }
     }
   }
 
