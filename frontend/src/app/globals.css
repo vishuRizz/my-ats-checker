@@ -354,6 +354,7 @@ code, .mono {
 .keyword-pill.weak { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
 
 /* --- DEMO STYLES --- */
+:root {
   --background: oklch(0.09 0 0);
   --foreground: oklch(1 0 0);
   --card: oklch(0.13 0 0);
