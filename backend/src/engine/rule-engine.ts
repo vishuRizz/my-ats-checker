@@ -59,7 +59,8 @@ const RULES: RuleConfig[] = [
     severity: "critical",
     pointsLost: 10,
     check: (p) => {
-      const required = ["experience", "education", "skills", "contact"];
+      // Contact is now an entity (email+phone), not a section — don't require a "Contact" heading
+      const required = ["experience", "education", "skills"];
       const found = p.sections.map((s) => s.name);
       const missing = required.filter((r) => !found.includes(r));
       return { triggered: missing.length > 0, detail: missing.join(", ") };

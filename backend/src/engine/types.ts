@@ -128,18 +128,28 @@ export interface JDRequirement {
   keyword: string;
   normalized: string;
   isRequired: boolean;
+  isSoft: boolean;           // true = tech list prefixed "you don't need to know all"
   frequency: number;
+  tier: "required" | "strong_signal" | "soft";
+  context?: string;          // the JD line where this was extracted
 }
 
-export type KeywordPlacement = "bullet_with_context" | "skills_list_only" | "missing";
+export type KeywordPlacement =
+  | "bullet_with_context"   // in experience bullets — strongest signal
+  | "projects_context"      // in projects section — context signal
+  | "skills_list_only"      // only in skills list — weaker signal
+  | "missing";              // not found
 
 export interface KeywordMatch {
   keyword: string;
   normalized: string;
   isRequired: boolean;
+  isSoft?: boolean;
   matched: boolean;
   placement: KeywordPlacement;
-  context?: string;
+  context?: string;            // evidence snippet from resume
+  evidenceBullet?: string;     // the actual bullet line
+  tier?: "required" | "strong_signal" | "soft";
   aliases?: string[];
 }
 
@@ -175,7 +185,8 @@ export interface ScoreBreakdown {
   keywordCoverage?: ScoreCategory;   // only when JD present
   experienceRelevance?: ScoreCategory; // only when JD present
   hasJD: boolean;
-  estimatedLabel: string;      // always "Estimated parse+match score"
+  estimatedLabel: string;
+  scoreFormula: string;        // human-readable formula showing the weights used
 }
 
 // ============================================================

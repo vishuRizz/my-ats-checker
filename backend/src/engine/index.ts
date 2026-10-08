@@ -3,50 +3,33 @@
 // PRD §4: "parse(file) → ParseResult, analyze(parse, jd) → Analysis"
 // ============================================================
 
-import { extractPDFText, detectMultiColumn, detectHeaderFooterItems, PARSER_VERSION } from "./pdf-extractor";
-import { extractDOCXText } from "./docx-extractor";
-import { reconstructReadingOrder } from "./reading-order";
-import { detectSections, extractEntities } from "./section-detector";
-import { runRules } from "./rule-engine";
-import { extractJDRequirements, matchKeywords } from "./keyword-matcher";
-import { computeScore } from "./scorer";
-import type { ParseResult, AnalysisResponse, LostRegion } from "./types";
+import { extractPDFText, detectMultiColumn, detectHeaderFooterItems, PARSER_VERSION } from "./pdf-extractor.js";
+import { extractDOCXText } from "./docx-extractor.js";
+import { reconstructReadingOrder } from "./reading-order.js";
+import { detectSections, extractEntities } from "./section-detector.js";
+import { runRules } from "./rule-engine.js";
+import { extractJDRequirements, matchKeywords } from "./keyword-matcher.js";
+import { computeScore } from "./scorer.js";
+import type { ParseResult, AnalysisResponse, LostRegion } from "./types.js";
 
-const ENGINE_VERSION = "1.0.0-phase1";
+const ENGINE_VERSION = "1.0.1-phase1";
 
-/**
- * Detect file type from buffer magic bytes.
- */
 function detectFileType(buffer: Buffer): "pdf" | "docx" | "unknown" {
-  // PDF magic bytes: %PDF
-  if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46) {
-    return "pdf";
-  }
-  // DOCX magic bytes: PK (zip archive - Office Open XML)
-  if (buffer[0] === 0x50 && buffer[1] === 0x4b) {
-    // Further check: could be docx/xlsx/pptx — check content type
-    // We'll rely on the API route to also pass MIME type for disambiguation
-    return "docx";
-  }
+  if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46) return "pdf";
+  if (buffer[0] === 0x50 && buffer[1] === 0x4b) return "docx";
   return "unknown";
 }
 
-/**
- * Parse a resume file buffer and return structured parse results.
- * Accepts PDF or DOCX, max 5MB enforced by the route handler.
- */
 export async function parse(
   buffer: Buffer,
   mimeType: string,
   filename: string
 ): Promise<ParseResult> {
-  // Validate size (5MB max — PRD §6.1)
   const MAX_SIZE = 5 * 1024 * 1024;
   if (buffer.length > MAX_SIZE) {
     throw new Error(`File too large: ${(buffer.length / 1024 / 1024).toFixed(1)}MB. Maximum is 5MB.`);
   }
 
-  // Determine file type
   const isPDF =
     mimeType === "application/pdf" ||
     filename.toLowerCase().endsWith(".pdf") ||
@@ -61,65 +44,82 @@ export async function parse(
 
   const fileType: "pdf" | "docx" = isPDF ? "pdf" : "docx";
 
-  // ─── Extract raw text items ──────────────────────────────────
-  let textItems: any[];
+  let textItems: any[] = [];
   let pageCount = 1;
+  let pageWidths: number[] = [];
+  let pageHeights: number[] = [];
   let warnings: any[] = [];
   let isImageOnly = false;
   let hasTable = false;
   let rawText = "";
+  let links: { url: string; label: string; page: number }[] = [];
 
   if (isPDF) {
     const pdfData = await extractPDFText(buffer);
-    textItems = pdfData.textItems;
-    pageCount = pdfData.pageCount;
-    warnings = pdfData.warnings;
-    isImageOnly = pdfData.isImageOnly;
+    textItems    = pdfData.textItems;
+    pageCount    = pdfData.pageCount;
+    pageWidths   = pdfData.pageWidths;
+    pageHeights  = pdfData.pageHeights;
+    warnings     = pdfData.warnings;
+    isImageOnly  = pdfData.isImageOnly;
+    links        = pdfData.links;
   } else {
     const docxData = await extractDOCXText(buffer);
     textItems = docxData.textItems;
-    warnings = docxData.warnings;
-    hasTable = docxData.hasTable;
-    rawText = docxData.rawText;
-    pageCount = Math.ceil(rawText.length / 3000); // rough estimate
+    warnings  = docxData.warnings;
+    hasTable  = docxData.hasTable;
+    rawText   = docxData.rawText;
+    pageCount = Math.ceil(rawText.length / 3000);
   }
 
-  // ─── Multi-column and header/footer detection ─────────────────
-  const isMultiColumn = isPDF ? detectMultiColumn(textItems) : false;
-  const { headerItems, footerItems } = detectHeaderFooterItems(textItems);
+  // Use actual page width from PDF (or default 612 pt = US Letter)
+  const pageWidth = pageWidths[0] ?? 612;
+
+  // ── Multi-column detection ────────────────────────────────────
+  const isMultiColumn = isPDF
+    ? detectMultiColumn(textItems, pageWidth, pageCount)
+    : false;
+
+  // ── Header/footer detection (multi-page only) ─────────────────
+  const { headerItems, footerItems } = detectHeaderFooterItems(
+    textItems,
+    pageHeights.length > 0 ? pageHeights : [840],
+    pageCount
+  );
   const hasHeaderFooterContent = headerItems.length > 0 || footerItems.length > 0;
 
-  // Mark header/footer items as lost regions
   const lostRegions: LostRegion[] = [];
   for (const item of headerItems) {
-    lostRegions.push({
-      page: item.page,
-      bbox: item.bbox,
-      reason: "text_in_header",
-      text: item.text,
-    });
+    lostRegions.push({ page: item.page, bbox: item.bbox, reason: "text_in_header", text: item.text });
   }
   for (const item of footerItems) {
-    lostRegions.push({
-      page: item.page,
-      bbox: item.bbox,
-      reason: "text_in_footer",
-      text: item.text,
-    });
+    lostRegions.push({ page: item.page, bbox: item.bbox, reason: "text_in_footer", text: item.text });
   }
 
-  // ─── Reading order reconstruction ────────────────────────────
+  // ── Reading order ─────────────────────────────────────────────
   const { atsOrder, bestEffortOrder, lostRegions: readingOrderLost } =
-    reconstructReadingOrder(textItems, isMultiColumn);
+    reconstructReadingOrder(textItems, isMultiColumn, pageWidth);
   lostRegions.push(...readingOrderLost);
 
   const fullText = isPDF ? atsOrder : rawText;
 
-  // ─── Section detection ────────────────────────────────────────
+  // ── Section detection ─────────────────────────────────────────
   const sections = detectSections(textItems, fullText);
 
-  // ─── Entity extraction ────────────────────────────────────────
+  // ── Entity extraction ─────────────────────────────────────────
+  // Merge PDF link annotations into entity links
   const entities = extractEntities(fullText, sections);
+  // Add PDF annotation links (these are more reliable than URL-regex from text)
+  if (links.length > 0) {
+    const annotationUrls = links.map((l) => l.label !== l.url ? `${l.label}: ${l.url}` : l.url);
+    // Merge: annotation links take priority, then text-extracted links
+    const existing = new Set(entities.links.map((l) => l.toLowerCase()));
+    for (const u of annotationUrls) {
+      if (!existing.has(u.toLowerCase())) entities.links.push(u);
+    }
+    // Also store raw annotation links for display
+    (entities as any).linkAnnotations = links;
+  }
 
   return {
     fileType,
@@ -137,17 +137,12 @@ export async function parse(
   };
 }
 
-/**
- * Run the full analysis: rules + keyword matching + scoring.
- */
 export async function analyze(
   parseResult: ParseResult,
   jdText: string | null
 ): Promise<AnalysisResponse> {
-  // Run rule engine
   const rules = runRules(parseResult);
 
-  // Run keyword matching if JD provided
   let keywordReport = null;
   if (jdText && jdText.trim().length > 20) {
     const jdRequirements = extractJDRequirements(jdText);
@@ -156,7 +151,6 @@ export async function analyze(
     }
   }
 
-  // Compute score
   const scoreBreakdown = computeScore(parseResult, rules, keywordReport);
 
   return {

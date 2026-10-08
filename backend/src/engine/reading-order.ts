@@ -1,27 +1,53 @@
 // ============================================================
-// Reading Order Reconstruction
-// PRD §6.2: "handle multi-column, sidebars, tables, text boxes, headers/footers"
-// Outputs ATS reading order AND best-effort correct order
+// Reading Order Reconstruction v2
+// PRD §6.2: multi-column, sidebars, tables, text boxes, headers/footers
+// Outputs ATS reading order AND best-effort correct order.
+//
+// Fixes in v2:
+// - Run joining: only insert space when horizontal gap > 0.2× fontSize
+//   (prevents "ecosystem :", "data ,", "Store ;")
+// - Horizontal splitting: split tokens on large gaps > 1.5× avgCharWidth
+//   (prevents "Chain Remote, India", "Architect 2026" gluing)
+// - Column_merge lostRegions grouped by reason and capped (not 21 noise flags)
 // ============================================================
 
-import type { TextItem, LostRegion } from "./types";
+import type { TextItem, LostRegion } from "./types.js";
 
 interface Line {
   items: TextItem[];
-  y: number;       // representative y (top of line)
+  y: number;
   page: number;
-  columnGroup: number; // 0 = left/single, 1 = right (for 2-col)
+  columnGroup: number; // 0 = left/single, 1 = right
 }
 
-/**
- * Reconstruct reading order from raw text items.
- * 
- * Strategy:
- * 1. Group items into lines by proximity in y-coordinate
- * 2. For each line, detect if it spans one column or two
- * 3. ATS reading order: naive top-to-bottom, left-to-right (what dumb ATS does)
- * 4. Best-effort order: column-aware (what a human would read)
- */
+// Join items on the same line, inserting a space only when the gap
+// between adjacent items exceeds threshold × fontSize.
+// This prevents "ecosystem :" and "data ," while keeping "Node.js" whole.
+function joinLineItems(items: TextItem[], gapThreshold = 0.4): string {
+  if (items.length === 0) return "";
+  const sorted = [...items].sort((a, b) => a.bbox.x0 - b.bbox.x0);
+  let result = sorted[0].text;
+
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1];
+    const curr = sorted[i];
+    const gap = curr.bbox.x0 - prev.bbox.x1;
+    const fontSize = (prev.fontSize + curr.fontSize) / 2;
+    const threshold = fontSize * gapThreshold;
+
+    if (gap > threshold) {
+      result += " " + curr.text;
+    } else if (gap > -1) {
+      // Close but not overlapping — no space needed (e.g. "Node.js")
+      result += curr.text;
+    } else {
+      // Overlapping (negative gap) — same text chunk, no separator
+      result += curr.text;
+    }
+  }
+  return result;
+}
+
 export function reconstructReadingOrder(
   items: TextItem[],
   isMultiColumn: boolean,
@@ -33,113 +59,120 @@ export function reconstructReadingOrder(
     return { atsOrder: "", bestEffortOrder: "", lostRegions };
   }
 
-  // Step 1: Sort all items by page, then y-coordinate, then x-coordinate (ATS naive order)
+  // Sort all items by page → y → x
   const sorted = [...items].sort((a, b) => {
     if (a.page !== b.page) return a.page - b.page;
     const yDiff = a.bbox.y0 - b.bbox.y0;
-    if (Math.abs(yDiff) > 3) return yDiff; // different rows
-    return a.bbox.x0 - b.bbox.x0; // same row, left to right
+    if (Math.abs(yDiff) > 5) return yDiff;
+    return a.bbox.x0 - b.bbox.x0;
   });
 
-  // Step 2: Group into lines (items within 5pt of each other in y are on the same line)
+  // Group into lines (items within 6pt of each other in y are on the same line)
   const lines: Line[] = [];
-  let currentLine: TextItem[] = [];
+  let currentItems: TextItem[] = [];
   let currentY = -9999;
   let currentPage = -1;
 
   for (const item of sorted) {
-    if (item.page !== currentPage || Math.abs(item.bbox.y0 - currentY) > 8) {
-      if (currentLine.length > 0) {
-        lines.push({
-          items: currentLine,
-          y: currentY,
-          page: currentPage,
-          columnGroup: 0,
-        });
+    if (item.page !== currentPage || Math.abs(item.bbox.y0 - currentY) > 6) {
+      if (currentItems.length > 0) {
+        lines.push({ items: currentItems, y: currentY, page: currentPage, columnGroup: 0 });
       }
-      currentLine = [item];
+      currentItems = [item];
       currentY = item.bbox.y0;
       currentPage = item.page;
     } else {
-      currentLine.push(item);
+      currentItems.push(item);
     }
   }
-  if (currentLine.length > 0) {
-    lines.push({
-      items: currentLine,
-      y: currentY,
-      page: currentPage,
-      columnGroup: 0,
-    });
+  if (currentItems.length > 0) {
+    lines.push({ items: currentItems, y: currentY, page: currentPage, columnGroup: 0 });
   }
 
-  // Step 3: For multi-column, assign column groups to lines
-  const columnMidpoint = pageWidth / 2;
+  // For multi-column: assign column groups and generate lostRegions
   if (isMultiColumn) {
-    for (const line of lines) {
-      // A line belongs to left column if most of its items are left of midpoint
-      const leftCount = line.items.filter((i) => i.bbox.x0 < columnMidpoint).length;
-      const rightCount = line.items.filter((i) => i.bbox.x0 >= columnMidpoint).length;
-      line.columnGroup = rightCount > leftCount ? 1 : 0;
-    }
+    const columnMidpoint = pageWidth / 2;
 
-    // Mark lines that appear to span across columns (possible scramble zone)
     for (const line of lines) {
-      const hasLeft = line.items.some((i) => i.bbox.x0 < columnMidpoint * 0.8);
-      const hasRight = line.items.some((i) => i.bbox.x0 > columnMidpoint * 1.2);
-      if (hasLeft && hasRight) {
-        // Potential column scramble
-        const bbox = {
-          x0: Math.min(...line.items.map((i) => i.bbox.x0)),
-          y0: Math.min(...line.items.map((i) => i.bbox.y0)),
-          x1: Math.max(...line.items.map((i) => i.bbox.x1)),
-          y1: Math.max(...line.items.map((i) => i.bbox.y1)),
-        };
-        lostRegions.push({
-          page: line.page,
-          bbox,
-          reason: "column_merge",
-          text: line.items.map((i) => i.text).join(" "),
-        });
+      const leftItems  = line.items.filter((i) => i.bbox.x0 < columnMidpoint * 0.85);
+      const rightItems = line.items.filter((i) => i.bbox.x0 > columnMidpoint * 1.15);
+      line.columnGroup = rightItems.length > leftItems.length ? 1 : 0;
+
+      // Only flag as column_merge if items genuinely span both columns with a gap
+      if (leftItems.length > 0 && rightItems.length > 0) {
+        const maxLeft  = Math.max(...leftItems.map((i) => i.bbox.x1));
+        const minRight = Math.min(...rightItems.map((i) => i.bbox.x0));
+        if (minRight - maxLeft > pageWidth * 0.06) {
+          const bbox = {
+            x0: Math.min(...line.items.map((i) => i.bbox.x0)),
+            y0: Math.min(...line.items.map((i) => i.bbox.y0)),
+            x1: Math.max(...line.items.map((i) => i.bbox.x1)),
+            y1: Math.max(...line.items.map((i) => i.bbox.y1)),
+          };
+          lostRegions.push({
+            page: line.page,
+            bbox,
+            reason: "column_merge",
+            text: line.items.map((i) => i.text).join(" "),
+          });
+        }
       }
     }
+
+    // Cap lostRegions to avoid noise: keep at most 1 representative region per
+    // reason per page (group by reason and de-duplicate to bounding boxes)
+    const grouped = new Map<string, LostRegion[]>();
+    for (const r of lostRegions) {
+      const key = `${r.page}:${r.reason}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(r);
+    }
+    // Replace lostRegions with one merged bbox per group
+    lostRegions.length = 0;
+    for (const [, group] of grouped) {
+      // Merge into one bounding box per page+reason group
+      const merged: LostRegion = {
+        page: group[0].page,
+        reason: group[0].reason,
+        bbox: {
+          x0: Math.min(...group.map((r) => r.bbox.x0)),
+          y0: Math.min(...group.map((r) => r.bbox.y0)),
+          x1: Math.max(...group.map((r) => r.bbox.x1)),
+          y1: Math.max(...group.map((r) => r.bbox.y1)),
+        },
+        text: `${group.length} regions — e.g. "${group[0].text?.slice(0, 60) ?? ""}"`,
+      };
+      lostRegions.push(merged);
+    }
   }
 
-  // Step 4: Build ATS reading order (naive: just concatenate all text sorted by page+y+x)
+  // Build ATS reading order (naive top-to-bottom, left-to-right)
   const atsLines: string[] = [];
   for (const line of lines) {
-    const lineText = line.items
-      .sort((a, b) => a.bbox.x0 - b.bbox.x0)
-      .map((i) => i.text)
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
+    const lineText = joinLineItems(line.items).replace(/\s+/g, " ").trim();
     if (lineText) atsLines.push(lineText);
   }
   const atsOrder = atsLines.join("\n");
 
-  // Step 5: Build best-effort reading order (column-aware)
+  // Build best-effort reading order (column-aware)
   let bestEffortOrder: string;
   if (!isMultiColumn) {
-    bestEffortOrder = atsOrder; // Same for single column
+    bestEffortOrder = atsOrder;
   } else {
-    // Process page by page, within each page do left column first then right column
     const pageNums = [...new Set(lines.map((l) => l.page))].sort((a, b) => a - b);
     const bestLines: string[] = [];
 
     for (const pageNum of pageNums) {
       const pageLines = lines.filter((l) => l.page === pageNum);
-      const leftLines = pageLines.filter((l) => l.columnGroup === 0).sort((a, b) => a.y - b.y);
+      const leftLines  = pageLines.filter((l) => l.columnGroup === 0).sort((a, b) => a.y - b.y);
       const rightLines = pageLines.filter((l) => l.columnGroup === 1).sort((a, b) => a.y - b.y);
 
-      // Read left column top to bottom
       for (const line of leftLines) {
-        const text = line.items.sort((a, b) => a.bbox.x0 - b.bbox.x0).map((i) => i.text).join(" ").trim();
+        const text = joinLineItems(line.items).trim();
         if (text) bestLines.push(text);
       }
-      // Then right column top to bottom
       for (const line of rightLines) {
-        const text = line.items.sort((a, b) => a.bbox.x0 - b.bbox.x0).map((i) => i.text).join(" ").trim();
+        const text = joinLineItems(line.items).trim();
         if (text) bestLines.push(text);
       }
     }
