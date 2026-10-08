@@ -3,15 +3,14 @@
 // No API cost, deterministic, runs in-process.
 // ============================================================
 
-import { pipeline, FeatureExtractionPipeline } from "@xenova/transformers";
-
 // Use a small, fast model suitable for semantic similarity
 const MODEL_NAME = "Xenova/all-MiniLM-L6-v2";
 
-let embedder: FeatureExtractionPipeline | null = null;
+let embedder: any = null;
 
-async function getEmbedder(): Promise<FeatureExtractionPipeline> {
+async function getEmbedder(): Promise<any> {
   if (!embedder) {
+    const { pipeline } = await import("@xenova/transformers");
     // Note: In production, you might want to configure cache_dir
     embedder = await pipeline("feature-extraction", MODEL_NAME, {
       quantized: true, // Use quantized model for smaller memory footprint and faster inference

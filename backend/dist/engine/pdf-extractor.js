@@ -1,69 +1,35 @@
 "use strict";
 // ============================================================
-// PDF Extractor
+// PDF Extractor v2
 // Uses pdfjs-dist v4 via dynamic import (ESM package in CJS host)
 // Extracts text items WITH coordinates for reading-order reconstruction
+// Also reads link annotations for URL extraction.
 // ============================================================
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PARSER_VERSION = void 0;
 exports.extractPDFText = extractPDFText;
 exports.detectMultiColumn = detectMultiColumn;
 exports.detectHeaderFooterItems = detectHeaderFooterItems;
-const PARSER_VERSION = "pdfjs-dist@4.x-phase1";
+const PARSER_VERSION = "pdfjs-dist@4.x-phase1.2";
 exports.PARSER_VERSION = PARSER_VERSION;
 let _pdfjsLib = null;
-/**
- * Lazy-loads pdfjs-dist once. Dynamic import allows CJS host to consume ESM package.
- */
 async function getPdfjs() {
     if (_pdfjsLib)
         return _pdfjsLib;
-    _pdfjsLib = await Promise.resolve().then(() => __importStar(require("pdfjs-dist")));
-    // Disable web worker - not available in Node.js
+    _pdfjsLib = await import("pdfjs-dist");
     if (_pdfjsLib.GlobalWorkerOptions) {
-        _pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const workerPath = require.resolve("pdfjs-dist/build/pdf.worker.mjs");
+        _pdfjsLib.GlobalWorkerOptions.workerSrc = `file://${workerPath}`;
     }
     return _pdfjsLib;
 }
-/**
- * Extract text items with coordinates from a PDF buffer.
- */
 async function extractPDFText(buffer) {
     const warnings = [];
     let isImageOnly = false;
+    const pageWidths = [];
+    const pageHeights = [];
+    const links = [];
     const pdfjs = await getPdfjs();
     let pdf;
     try {
@@ -84,6 +50,9 @@ async function extractPDFText(buffer) {
         const page = await pdf.getPage(pageNum);
         const viewport = page.getViewport({ scale: 1.0 });
         const pageHeight = viewport.height;
+        const pageWidth = viewport.width;
+        pageWidths.push(pageWidth);
+        pageHeights.push(pageHeight);
         let textContent;
         try {
             textContent = await page.getTextContent();
@@ -97,18 +66,17 @@ async function extractPDFText(buffer) {
         for (const item of items) {
             if (!item.str || item.str.trim() === "")
                 continue;
-            // Transform: [scaleX, skewX, skewY, scaleY, translateX, translateY]
             const transform = item.transform;
             const x = transform[4];
             const y = transform[5]; // PDF: bottom-left origin
             const width = item.width ?? 0;
             const height = item.height ?? Math.abs(transform[3]) ?? 12;
+            const fontSize = Math.abs(transform[3]) || 12;
             // Convert to top-left origin
             const y0 = pageHeight - y - height;
             const y1 = pageHeight - y;
             const fontName = item.fontName ?? "";
             const isBold = /bold/i.test(fontName) || /heavy/i.test(fontName);
-            const fontSize = Math.abs(transform[3]) || 12;
             allItems.push({
                 text: item.str,
                 page: pageNum,
@@ -118,6 +86,28 @@ async function extractPDFText(buffer) {
                 isBold,
             });
         }
+        // ── Extract link annotations ────────────────────────────────
+        try {
+            const annotations = await page.getAnnotations();
+            for (const ann of annotations) {
+                if (ann.subtype === "Link" && ann.url) {
+                    // Try to find the label text overlapping this annotation rect
+                    // pdfjs rect: [x0, y0, x1, y1] in PDF coords (bottom-left origin)
+                    const [ax0, ay0, ax1, ay1] = ann.rect;
+                    // Convert to top-left
+                    const rectY0 = pageHeight - ay1;
+                    const rectY1 = pageHeight - ay0;
+                    const overlapping = allItems.filter((it) => it.page === pageNum &&
+                        it.bbox.x0 >= ax0 - 2 && it.bbox.x1 <= ax1 + 2 &&
+                        it.bbox.y0 >= rectY0 - 4 && it.bbox.y1 <= rectY1 + 4);
+                    const label = overlapping.map((it) => it.text).join("").trim() || ann.url;
+                    links.push({ url: ann.url, label, page: pageNum });
+                }
+            }
+        }
+        catch {
+            // Annotations are optional - don't fail the whole parse
+        }
     }
     if (totalTextItems === 0) {
         isImageOnly = true;
@@ -126,47 +116,79 @@ async function extractPDFText(buffer) {
             message: "This PDF appears to be image-only (scanned). No text layer was found. OCR support is coming in Phase 2.",
         });
     }
-    return { textItems: allItems, pageCount, warnings, isImageOnly };
+    return { textItems: allItems, pageCount, pageWidths, pageHeights, warnings, isImageOnly, links };
 }
-/**
- * Detect multi-column layout by analysing horizontal clustering of text items.
- */
-function detectMultiColumn(items, pageWidth = 600) {
-    if (items.length < 10)
+// ─── Multi-column detection (improved) ────────────────────────
+// Only flag if a vertical gutter runs through ≥4 BODY text lines
+// on both sides. Short right-aligned date/location tokens are ignored.
+// Self-check: if atsOrder == geometricOrder, reading order can't scramble.
+function detectMultiColumn(items, pageWidth = 600, pageCount = 1) {
+    if (items.length < 15)
         return false;
-    const midMin = pageWidth * 0.38;
-    const midMax = pageWidth * 0.62;
-    const xStarts = items.map((i) => i.bbox.x0);
-    const leftItems = xStarts.filter((x) => x < midMin);
-    const rightItems = xStarts.filter((x) => x > midMax);
-    const middleItems = xStarts.filter((x) => x >= midMin && x <= midMax);
-    const hasGap = leftItems.length > 5 &&
-        rightItems.length > 5 &&
-        middleItems.length < (leftItems.length + rightItems.length) * 0.2;
-    const lineGroups = new Map();
-    for (const item of items) {
-        const roundedY = Math.round(item.bbox.y0 / 5) * 5;
-        if (!lineGroups.has(roundedY))
-            lineGroups.set(roundedY, []);
-        lineGroups.get(roundedY).push(item);
+    // Only look at body text (not very short items, not very small font)
+    const avgFontSize = items.reduce((s, i) => s + i.fontSize, 0) / items.length;
+    const bodyItems = items.filter((i) => i.fontSize >= avgFontSize * 0.85 && i.text.trim().length > 3);
+    if (bodyItems.length < 10)
+        return false;
+    // Group body items into lines
+    const lineMap = new Map();
+    for (const item of bodyItems) {
+        const key = Math.round(item.bbox.y0 / 6) * 6;
+        if (!lineMap.has(key))
+            lineMap.set(key, []);
+        lineMap.get(key).push(item);
     }
-    let parallelLines = 0;
-    for (const [, lineItems] of lineGroups) {
-        if (lineItems.length < 2)
+    // Count lines where items appear on BOTH sides of the midpoint
+    // with a gap between them (true gutter) vs lines with a wide single item
+    const midpoint = pageWidth / 2;
+    const gutterLeft = pageWidth * 0.35;
+    const gutterRight = pageWidth * 0.65;
+    let gutterLines = 0;
+    let totalBodyLines = 0;
+    // Regex to detect contact/link bar lines (email, phone, URL tokens)
+    const CONTACT_LINE_PATTERN = /@|https?:\/\/|linkedin|github|upwork|leetcode|portfolio|\b\d{7,}\b/i;
+    for (const lineItems of lineMap.values()) {
+        totalBodyLines++;
+        const lineText = lineItems.map((i) => i.text).join(" ");
+        // Skip lines that look like a contact/link bar
+        if (CONTACT_LINE_PATTERN.test(lineText))
             continue;
-        const xPositions = lineItems.map((i) => i.bbox.x0).sort((a, b) => a - b);
-        const span = xPositions[xPositions.length - 1] - xPositions[0];
-        if (span > pageWidth * 0.4)
-            parallelLines++;
+        const leftSide = lineItems.filter((i) => i.bbox.x1 < gutterLeft);
+        const rightSide = lineItems.filter((i) => i.bbox.x0 > gutterRight);
+        if (leftSide.length > 0 && rightSide.length > 0) {
+            const maxLeft = Math.max(...leftSide.map((i) => i.bbox.x1));
+            const minRight = Math.min(...rightSide.map((i) => i.bbox.x0));
+            if (minRight - maxLeft > pageWidth * 0.08) {
+                gutterLines++;
+            }
+        }
     }
-    return hasGap || parallelLines > 3;
+    // Require gutter across at least 30% of body lines AND minimum 4 lines
+    const gutterRatio = totalBodyLines > 0 ? gutterLines / totalBodyLines : 0;
+    if (gutterLines < 4 || gutterRatio < 0.30)
+        return false;
+    // Self-check: verify items are NOT just date/location tokens on right
+    // (right-side items that are short and look like dates/locations don't count)
+    const rightBodyItems = bodyItems.filter((i) => i.bbox.x0 > gutterRight);
+    const realRightContent = rightBodyItems.filter((i) => !/^\d{4}$/.test(i.text.trim()) && !/^(present|current|remote|india|usa|uk)$/i.test(i.text.trim()));
+    return realRightContent.length >= 5;
 }
-/**
- * Detect items in header/footer regions (top 8% and bottom 8% of page).
- */
-function detectHeaderFooterItems(items, pageHeightEstimate = 840) {
-    return {
-        headerItems: items.filter((i) => i.bbox.y1 < pageHeightEstimate * 0.08),
-        footerItems: items.filter((i) => i.bbox.y0 > pageHeightEstimate * 0.92),
-    };
+// ─── Header/footer detection (improved) ───────────────────────
+// Only flag text in the page margin on MULTI-PAGE documents.
+// On a 1-page resume, the "header" area is just the contact block - don't flag it.
+function detectHeaderFooterItems(items, pageHeights, pageCount) {
+    // On a single-page file, never flag header/footer - it's just the contact block.
+    if (pageCount === 1) {
+        return { headerItems: [], footerItems: [] };
+    }
+    const headerItems = [];
+    const footerItems = [];
+    for (const item of items) {
+        const ph = pageHeights[item.page - 1] ?? 840;
+        if (item.bbox.y1 < ph * 0.06)
+            headerItems.push(item);
+        else if (item.bbox.y0 > ph * 0.94)
+            footerItems.push(item);
+    }
+    return { headerItems, footerItems };
 }

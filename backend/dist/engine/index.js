@@ -6,41 +6,26 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parse = parse;
 exports.analyze = analyze;
-const pdf_extractor_1 = require("./pdf-extractor");
-const docx_extractor_1 = require("./docx-extractor");
-const reading_order_1 = require("./reading-order");
-const section_detector_1 = require("./section-detector");
-const rule_engine_1 = require("./rule-engine");
-const keyword_matcher_1 = require("./keyword-matcher");
-const scorer_1 = require("./scorer");
-const ENGINE_VERSION = "1.0.0-phase1";
-/**
- * Detect file type from buffer magic bytes.
- */
+const pdf_extractor_js_1 = require("./pdf-extractor.js");
+const docx_extractor_js_1 = require("./docx-extractor.js");
+const reading_order_js_1 = require("./reading-order.js");
+const section_detector_js_1 = require("./section-detector.js");
+const rule_engine_js_1 = require("./rule-engine.js");
+const keyword_matcher_js_1 = require("./keyword-matcher.js");
+const scorer_js_1 = require("./scorer.js");
+const ENGINE_VERSION = "1.0.1-phase1";
 function detectFileType(buffer) {
-    // PDF magic bytes: %PDF
-    if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46) {
+    if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46)
         return "pdf";
-    }
-    // DOCX magic bytes: PK (zip archive - Office Open XML)
-    if (buffer[0] === 0x50 && buffer[1] === 0x4b) {
-        // Further check: could be docx/xlsx/pptx - check content type
-        // We'll rely on the API route to also pass MIME type for disambiguation
+    if (buffer[0] === 0x50 && buffer[1] === 0x4b)
         return "docx";
-    }
     return "unknown";
 }
-/**
- * Parse a resume file buffer and return structured parse results.
- * Accepts PDF or DOCX, max 5MB enforced by the route handler.
- */
 async function parse(buffer, mimeType, filename) {
-    // Validate size (5MB max - PRD §6.1)
     const MAX_SIZE = 5 * 1024 * 1024;
     if (buffer.length > MAX_SIZE) {
         throw new Error(`File too large: ${(buffer.length / 1024 / 1024).toFixed(1)}MB. Maximum is 5MB.`);
     }
-    // Determine file type
     const isPDF = mimeType === "application/pdf" ||
         filename.toLowerCase().endsWith(".pdf") ||
         detectFileType(buffer) === "pdf";
@@ -50,58 +35,106 @@ async function parse(buffer, mimeType, filename) {
         throw new Error("Unsupported file type. Please upload a PDF or DOCX file.");
     }
     const fileType = isPDF ? "pdf" : "docx";
-    // ─── Extract raw text items ──────────────────────────────────
-    let textItems;
+    let textItems = [];
     let pageCount = 1;
+    let pageWidths = [];
+    let pageHeights = [];
     let warnings = [];
     let isImageOnly = false;
     let hasTable = false;
     let rawText = "";
+    let links = [];
     if (isPDF) {
-        const pdfData = await (0, pdf_extractor_1.extractPDFText)(buffer);
+        const pdfData = await (0, pdf_extractor_js_1.extractPDFText)(buffer);
         textItems = pdfData.textItems;
         pageCount = pdfData.pageCount;
+        pageWidths = pdfData.pageWidths;
+        pageHeights = pdfData.pageHeights;
         warnings = pdfData.warnings;
         isImageOnly = pdfData.isImageOnly;
+        links = pdfData.links;
     }
     else {
-        const docxData = await (0, docx_extractor_1.extractDOCXText)(buffer);
+        const docxData = await (0, docx_extractor_js_1.extractDOCXText)(buffer);
         textItems = docxData.textItems;
         warnings = docxData.warnings;
         hasTable = docxData.hasTable;
         rawText = docxData.rawText;
-        pageCount = Math.ceil(rawText.length / 3000); // rough estimate
+        pageCount = Math.ceil(rawText.length / 3000);
     }
-    // ─── Multi-column and header/footer detection ─────────────────
-    const isMultiColumn = isPDF ? (0, pdf_extractor_1.detectMultiColumn)(textItems) : false;
-    const { headerItems, footerItems } = (0, pdf_extractor_1.detectHeaderFooterItems)(textItems);
+    // Use actual page width from PDF (or default 612 pt = US Letter)
+    const pageWidth = pageWidths[0] ?? 612;
+    // ── Multi-column detection ────────────────────────────────────
+    const isMultiColumn = isPDF
+        ? (0, pdf_extractor_js_1.detectMultiColumn)(textItems, pageWidth, pageCount)
+        : false;
+    // ── Header/footer detection (multi-page only) ─────────────────
+    const { headerItems, footerItems } = (0, pdf_extractor_js_1.detectHeaderFooterItems)(textItems, pageHeights.length > 0 ? pageHeights : [840], pageCount);
     const hasHeaderFooterContent = headerItems.length > 0 || footerItems.length > 0;
-    // Mark header/footer items as lost regions
     const lostRegions = [];
     for (const item of headerItems) {
-        lostRegions.push({
-            page: item.page,
-            bbox: item.bbox,
-            reason: "text_in_header",
-            text: item.text,
-        });
+        lostRegions.push({ page: item.page, bbox: item.bbox, reason: "text_in_header", text: item.text });
     }
     for (const item of footerItems) {
-        lostRegions.push({
-            page: item.page,
-            bbox: item.bbox,
-            reason: "text_in_footer",
-            text: item.text,
-        });
+        lostRegions.push({ page: item.page, bbox: item.bbox, reason: "text_in_footer", text: item.text });
     }
-    // ─── Reading order reconstruction ────────────────────────────
-    const { atsOrder, bestEffortOrder, lostRegions: readingOrderLost } = (0, reading_order_1.reconstructReadingOrder)(textItems, isMultiColumn);
+    // ── Reading order ─────────────────────────────────────────────
+    const { atsOrder, bestEffortOrder, lostRegions: readingOrderLost } = (0, reading_order_js_1.reconstructReadingOrder)(textItems, isMultiColumn, pageWidth);
     lostRegions.push(...readingOrderLost);
     const fullText = isPDF ? atsOrder : rawText;
-    // ─── Section detection ────────────────────────────────────────
-    const sections = (0, section_detector_1.detectSections)(textItems, fullText);
-    // ─── Entity extraction ────────────────────────────────────────
-    const entities = (0, section_detector_1.extractEntities)(fullText, sections);
+    // ── Section detection ─────────────────────────────────────────
+    const sections = (0, section_detector_js_1.detectSections)(textItems, fullText);
+    // ── Entity extraction ─────────────────────────────────────────
+    // Merge PDF link annotations into entity links
+    const entities = (0, section_detector_js_1.extractEntities)(fullText, sections);
+    // Add PDF annotation links (these are more reliable than URL-regex from text)
+    if (links.length > 0) {
+        const annotationUrls = links.map((l) => l.label !== l.url ? `${l.label}: ${l.url}` : l.url);
+        // Merge: annotation links take priority, then text-extracted links
+        const existing = new Set(entities.links.map((l) => l.toLowerCase()));
+        for (const u of annotationUrls) {
+            if (!existing.has(u.toLowerCase()))
+                entities.links.push(u);
+        }
+        // Also store raw annotation links for display
+        entities.linkAnnotations = links;
+    }
+    // ── Parsability Risk Assessment (Gap 3) ──────────────────────
+    const textItemCount = textItems.length;
+    const textToPageRatio = pageCount > 0 ? textItemCount / pageCount : 0;
+    const suspiciousName = /canva|design|template|creative|infographic|portfolio/i.test(filename);
+    let parsabilityRisk = "none";
+    let parsabilityReason = "";
+    if (isImageOnly) {
+        parsabilityRisk = "high";
+        parsabilityReason =
+            "This PDF has no text layer. ATS parsers will see a completely blank document and extract nothing. " +
+                "This is most common with scanned resumes, Canva exports saved as images, or photos of a resume.";
+    }
+    else if (fileType === "pdf" && textToPageRatio < 25 && pageCount <= 3) {
+        parsabilityRisk = "high";
+        parsabilityReason =
+            `Only ${Math.round(textToPageRatio)} text elements extracted per page (expected 80–200+). ` +
+                "This usually means the resume uses heavy graphics, embedded images for text, or was exported from a design tool. " +
+                "Most of your content is likely invisible to ATS.";
+    }
+    else if (fileType === "pdf" && (textToPageRatio < 60 || suspiciousName)) {
+        parsabilityRisk = "medium";
+        parsabilityReason = suspiciousName
+            ? "The filename suggests a design template (Canva, Figma, etc.). " +
+                "Designed resumes often embed text as images which ATS cannot read. " +
+                "Verify all your text is selectable in a PDF viewer."
+            : `Lower than expected text density (${Math.round(textToPageRatio)} elements/page). ` +
+                "Some content may be in images or text boxes that ATS parsers skip. " +
+                "Try selecting all text in your PDF viewer - if you can't select it, ATS can't read it.";
+    }
+    else if (isMultiColumn || hasHeaderFooterContent) {
+        parsabilityRisk = "low";
+        parsabilityReason =
+            "Multi-column layout or header/footer content detected. " +
+                "ATS parsers may scramble or skip some content. " +
+                "See formatting rules for specific fixes.";
+    }
     return {
         fileType,
         pageCount,
@@ -114,25 +147,45 @@ async function parse(buffer, mimeType, filename) {
         isImageOnly,
         isMultiColumn,
         hasHeaderFooterContent: hasHeaderFooterContent || hasTable,
-        parserVersion: pdf_extractor_1.PARSER_VERSION,
+        parserVersion: pdf_extractor_js_1.PARSER_VERSION,
+        parsabilityRisk,
+        parsabilityReason,
+        textItemCount,
+        textToPageRatio: Math.round(textToPageRatio),
     };
 }
-/**
- * Run the full analysis: rules + keyword matching + scoring.
- */
+const semantic_matcher_js_1 = require("../llm/semantic-matcher.js");
 async function analyze(parseResult, jdText) {
-    // Run rule engine
-    const rules = (0, rule_engine_1.runRules)(parseResult);
-    // Run keyword matching if JD provided
+    const rules = (0, rule_engine_js_1.runRules)(parseResult);
     let keywordReport = null;
     if (jdText && jdText.trim().length > 20) {
-        const jdRequirements = (0, keyword_matcher_1.extractJDRequirements)(jdText);
+        const jdRequirements = (0, keyword_matcher_js_1.extractJDRequirements)(jdText);
         if (jdRequirements.length > 0) {
-            keywordReport = (0, keyword_matcher_1.matchKeywords)(jdRequirements, parseResult);
+            keywordReport = (0, keyword_matcher_js_1.matchKeywords)(jdRequirements, parseResult);
+            // Perform Semantic Matching for missing keywords
+            const missingKeywords = keywordReport.missing.map(m => m.keyword);
+            if (missingKeywords.length > 0) {
+                // Collect all extracted skills and entities for comparison
+                const resumeSkills = [
+                    ...parseResult.entities.skills,
+                    ...parseResult.entities.experience.flatMap(e => e.bullets), // use bullets as context
+                ];
+                // Basic unique filtering
+                const uniqueSkills = Array.from(new Set(resumeSkills)).filter(s => s.trim().length > 2);
+                const semanticMatches = await (0, semantic_matcher_js_1.findSemanticMatches)(missingKeywords, uniqueSkills);
+                if (semanticMatches.length > 0) {
+                    keywordReport.semanticMatches = semanticMatches;
+                    // Optionally compute a semantic match rate based on how many missing ones were semantically found
+                    const numSemantic = new Set(semanticMatches.map(m => m.jdKeyword)).size;
+                    const totalReqs = jdRequirements.length;
+                    // Add semantic matched count to the original matched count
+                    const originalMatchedCount = keywordReport.matched.length;
+                    keywordReport.semanticMatchRate = Math.round(((originalMatchedCount + numSemantic) / totalReqs) * 100);
+                }
+            }
         }
     }
-    // Compute score
-    const scoreBreakdown = (0, scorer_1.computeScore)(parseResult, rules, keywordReport);
+    const scoreBreakdown = (0, scorer_js_1.computeScore)(parseResult, rules, keywordReport);
     return {
         parseResult,
         rules,

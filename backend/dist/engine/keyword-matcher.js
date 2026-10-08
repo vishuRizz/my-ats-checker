@@ -1,65 +1,99 @@
 "use strict";
 // ============================================================
-// Keyword Matcher - Phase 1
-// PRD §6.5: Exact keyword match against JD with alias awareness
-// Uses a hardcoded alias list (~50 common tech mappings)
+// Keyword Matcher v2
+// PRD §6.5: JD keyword extraction with alias taxonomy + tiering
+//
+// Fixes in v2:
+// - Extract keywords from REQUIREMENT-CONTEXT lines only
+//   (tech list section prefixed "You don't need to know all" → soft/nice-to-have)
+// - Treat "Node.js" as ONE token, not "node" + "js"
+// - "go"/"Go" only matches Golang context - not "GoComet", "going", "to go"
+// - Strip company name boilerplate from extraction
+// - Tier by JD headings: non-negotiables > strong signals > tech list (soft)
+// - Alias taxonomy: LangGraph, RAG, agents → match "Applied AI/LLMs" semantically
+// - Show evidence snippets bounded to the actual bullet, not a section dump
 // ============================================================
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.extractJDRequirements = extractJDRequirements;
 exports.matchKeywords = matchKeywords;
-// ─── Alias Map (P1-003: small hardcoded list) ───────────────────
-// Maps canonical → [aliases...]. All lowercased.
+// ─── Alias taxonomy ─────────────────────────────────────────────
+// Maps canonical skill → [exact aliases that count as a match]
+// Each alias is matched as a WHOLE WORD (not substring).
 const ALIAS_MAP = {
-    javascript: ["js", "javascript", "ecmascript", "es6", "es2015"],
-    typescript: ["ts", "typescript"],
-    python: ["python", "python3", "py"],
-    react: ["react", "reactjs", "react.js"],
-    "react native": ["react native", "rn", "react-native"],
-    "node.js": ["node", "nodejs", "node.js"],
-    "next.js": ["next", "nextjs", "next.js"],
-    vue: ["vue", "vuejs", "vue.js"],
-    angular: ["angular", "angularjs"],
-    kubernetes: ["kubernetes", "k8s"],
-    docker: ["docker", "containerization"],
-    aws: ["aws", "amazon web services", "amazon aws"],
-    gcp: ["gcp", "google cloud", "google cloud platform"],
-    azure: ["azure", "microsoft azure"],
-    postgresql: ["postgresql", "postgres", "pg"],
-    mongodb: ["mongodb", "mongo"],
-    redis: ["redis"],
-    graphql: ["graphql", "gql"],
-    "rest api": ["rest", "rest api", "restful", "restful api"],
-    git: ["git", "github", "gitlab", "bitbucket"],
-    java: ["java"],
-    "c++": ["c++", "cpp", "c plus plus"],
-    "c#": ["c#", "csharp", "c sharp", ".net"],
-    go: ["go", "golang"],
-    rust: ["rust", "rustlang"],
-    sql: ["sql", "mysql", "mssql", "t-sql"],
-    html: ["html", "html5"],
-    css: ["css", "css3", "scss", "sass", "less"],
-    fastify: ["fastify"],
-    express: ["express", "expressjs", "express.js"],
-    tensorflow: ["tensorflow", "tf"],
-    pytorch: ["pytorch", "torch"],
-    "machine learning": ["machine learning", "ml"],
-    "deep learning": ["deep learning", "dl"],
-    devops: ["devops", "dev ops"],
-    cicd: ["ci/cd", "ci cd", "cicd", "continuous integration", "continuous deployment"],
-    agile: ["agile", "scrum", "kanban", "sprint"],
-    "linux/unix": ["linux", "unix", "ubuntu", "debian"],
-    swift: ["swift"],
-    kotlin: ["kotlin"],
-    flutter: ["flutter", "dart"],
-    scala: ["scala"],
-    php: ["php"],
-    ruby: ["ruby", "rails", "ruby on rails"],
-    selenium: ["selenium"],
-    jest: ["jest", "testing", "unit testing"],
-    figma: ["figma"],
-    "data analysis": ["data analysis", "data analytics", "analytics"],
-    excel: ["excel", "ms excel", "microsoft excel", "spreadsheets"],
-    tableau: ["tableau", "data visualization"],
+    "javascript": ["javascript", "ecmascript", "es6", "es2015", "es2020"], // 'js' removed - causes false positives in "Node.js", ".js"
+    "typescript": ["typescript", "ts"],
+    "python": ["python", "python3"],
+    "react": ["react", "reactjs", "react.js"],
+    "react native": ["react native", "react-native"],
+    "node.js": ["node.js", "nodejs"], // bare 'node' removed - caused 'node16', 'node_modules' matches
+    "next.js": ["next.js", "nextjs"],
+    "vue": ["vue", "vuejs", "vue.js"],
+    "angular": ["angular", "angularjs"],
+    "kubernetes": ["kubernetes", "k8s"],
+    "docker": ["docker"],
+    "aws": ["aws", "amazon web services"],
+    "gcp": ["gcp", "google cloud", "google cloud platform"],
+    "azure": ["azure", "microsoft azure"],
+    "postgresql": ["postgresql", "postgres"],
+    "mongodb": ["mongodb", "mongo"],
+    "redis": ["redis"],
+    "graphql": ["graphql", "gql"],
+    "rest api": ["rest api", "restful", "restful api"],
+    "git": ["git", "github", "gitlab"],
+    "java": ["java"],
+    "c++": ["c++", "cpp"],
+    "c#": ["c#", "csharp", ".net"],
+    // "go"/"golang" - must be bounded by start/end of word AND context-filtered
+    "golang": ["golang", "go"], // matched with extra guard (see matchGolang)
+    "rust": ["rust"],
+    "sql": ["sql", "mysql", "mssql"],
+    "html": ["html", "html5"],
+    "css": ["css", "scss", "sass"],
+    "fastify": ["fastify"],
+    "express": ["express", "expressjs"],
+    "tensorflow": ["tensorflow"],
+    "pytorch": ["pytorch"],
+    "machine learning": ["machine learning"],
+    "deep learning": ["deep learning"],
+    "devops": ["devops"],
+    "ci/cd": ["ci/cd", "cicd", "continuous integration"],
+    "agile": ["agile", "scrum", "kanban"],
+    "linux": ["linux", "unix", "ubuntu"],
+    "swift": ["swift"],
+    "kotlin": ["kotlin"],
+    "flutter": ["flutter"],
+    "scala": ["scala"],
+    "php": ["php"],
+    "ruby": ["ruby", "rails"],
+    "kafka": ["kafka"],
+    "clickhouse": ["clickhouse"],
+    "langgraph": ["langgraph"],
+    "fastapi": ["fastapi"],
+    "langchain": ["langchain"],
+    "weaviate": ["weaviate"],
+    "rag": ["rag"], // retrieval-augmented generation
+    "llm": ["llm", "llms", "large language model"],
+    "applied ai": ["applied ai", "applied ai/llms", "ai/llms"],
+    "agent": ["agent", "agents", "agentic"],
+    "prisma": ["prisma"],
+    "drizzle": ["drizzle"],
+    "supabase": ["supabase"],
+    "vercel": ["vercel"],
+    "terraform": ["terraform"],
+    "datadog": ["datadog"],
+    "opentelemetry": ["opentelemetry"],
+    "figma": ["figma"],
+};
+// Semantic groups: if JD mentions these, match resume's broader category
+// e.g. "LangGraph" in JD → also match "Applied AI/LLMs", "agents", "LLM" in resume
+const SEMANTIC_GROUPS = {
+    "applied ai": ["langgraph", "llm", "rag", "agent", "applied ai", "langchain"],
+    "langgraph": ["applied ai", "llm", "agent", "rag", "langchain"],
+    "rag": ["applied ai", "llm", "agent", "langchain"],
+    "llm": ["applied ai", "rag", "agent", "langgraph", "langchain"],
+    "agent": ["applied ai", "llm", "rag", "langgraph"],
+    "kafka": ["event streaming", "event pipeline", "kafka"],
+    "clickhouse": ["clickhouse", "analytical store", "olap"],
 };
 // Build reverse lookup: alias → canonical
 const ALIAS_TO_CANONICAL = new Map();
@@ -68,158 +102,241 @@ for (const [canonical, aliases] of Object.entries(ALIAS_MAP)) {
         ALIAS_TO_CANONICAL.set(alias.toLowerCase(), canonical);
     }
 }
-/**
- * Normalize a keyword to its canonical form using the alias map.
- */
-function normalize(keyword) {
-    const lower = keyword.toLowerCase().trim();
-    return ALIAS_TO_CANONICAL.get(lower) || lower;
+// ─── Section tier detection from JD text ─────────────────────────
+// Returns "required" | "strong_signal" | "soft" based on the heading/context
+// above a given line in the JD.
+function getJDTier(jdLines, lineIdx) {
+    // Look back up to 20 lines for the nearest section header
+    for (let i = lineIdx; i >= Math.max(0, lineIdx - 20); i--) {
+        const l = jdLines[i].trim().toLowerCase();
+        if (l.includes("non-negotiable") || l.includes("you can code") || l.includes("you will") || l.includes("must have") || l.includes("required"))
+            return "required";
+        if (l.includes("strong signal") || l.includes("you've built") || l.includes("you default") || l.includes("preferred"))
+            return "strong_signal";
+        if (l.includes("you don't need to know") || l.includes("don't need to know") || l.includes("nice to have") || l.includes("tech you'll work with") || l.includes("tech list"))
+            return "soft";
+        if (l.includes("what you'll actually do") || l.includes("what we're looking for"))
+            return "required";
+    }
+    return "strong_signal"; // default
 }
-/**
- * Extract keywords from a job description.
- * Uses simple noun phrase extraction + alias normalization.
- * Classifies required vs nice-to-have based on context words.
- */
+// ─── Golang guard ────────────────────────────────────────────────
+// "go" must appear as a standalone programming language mention,
+// not inside a word (GoComet, going, go-live, ago, etc.)
+function isGolangMention(line, match) {
+    if (match.toLowerCase() === "golang")
+        return true;
+    // "Go" - must be standalone word with programming context nearby
+    const idx = line.toLowerCase().indexOf("go");
+    if (idx < 0)
+        return false;
+    // Check it's a whole word
+    const before = idx > 0 ? line[idx - 1] : " ";
+    const after = idx + 2 < line.length ? line[idx + 2] : " ";
+    if (/[A-Za-z0-9]/.test(before) || /[A-Za-z0-9]/.test(after))
+        return false;
+    // Must appear in a tech-list context (comma-separated, or after "language" keyword)
+    return /python|node|rust|java|backend|language|stack/i.test(line);
+}
+function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+// ─── JD boilerplate / company-name stripping ─────────────────────
+// Lines that are about the company culture/branding, not tech requirements.
+// We skip keyword extraction from these lines.
+const BOILERPLATE_PATTERNS = [
+    /about\s+(gocomet|our company|us|the company)/i,
+    /moves\s+\$\d+\s+trillion/i,
+    /supply chain visibility/i,
+    /30\+\s+countries/i,
+    /most of it still runs on/i,
+    /logistics moves/i,
+    /we're fixing that/i,
+    /nova platform/i,
+    /founding team/i,
+    /your fingerprints/i,
+    /what this role is not/i,
+    /why this is different/i,
+];
+function isBoilerplateLine(line) {
+    return BOILERPLATE_PATTERNS.some((p) => p.test(line));
+}
+// ─── Main JD requirement extractor ────────────────────────────────
 function extractJDRequirements(jdText) {
-    // Required indicators
-    const requiredPatterns = /\b(?:required|must have|must-have|essential|mandatory|needed|need to|you will|you must|we require|requirement|must possess|minimum requirement|required skill)\b/gi;
-    // Nice-to-have indicators
-    const niceToHavePatterns = /\b(?:preferred|nice to have|nice-to-have|bonus|plus|advantage|desirable|optional|ideally|good to have|familiarity with|exposure to|experience with is a plus)\b/gi;
-    const lines = jdText.split("\n");
+    const jdLines = jdText.split("\n");
     const requirements = [];
     const seen = new Set();
-    // Parse line by line, look for tech keywords
-    for (const line of lines) {
+    for (let lineIdx = 0; lineIdx < jdLines.length; lineIdx++) {
+        const line = jdLines[lineIdx];
         const trimmed = line.trim();
         if (!trimmed || trimmed.length < 3)
             continue;
-        // Determine if this line is in a "required" or "nice-to-have" context
-        const isRequiredContext = requiredPatterns.test(trimmed);
-        const isNiceToHaveContext = niceToHavePatterns.test(trimmed);
-        // Reset regex lastIndex
-        requiredPatterns.lastIndex = 0;
-        niceToHavePatterns.lastIndex = 0;
-        // Extract tech terms: match against alias map
+        if (isBoilerplateLine(trimmed))
+            continue;
+        const tier = getJDTier(jdLines, lineIdx);
         for (const [canonical, aliases] of Object.entries(ALIAS_MAP)) {
+            if (seen.has(canonical))
+                continue;
             for (const alias of aliases) {
-                const regex = new RegExp(`\\b${escapeRegex(alias)}\\b`, "gi");
-                if (regex.test(trimmed) && !seen.has(canonical)) {
+                // Special handling for "go"/"golang"
+                if ((alias === "go" || canonical === "golang") && alias !== "golang") {
+                    const regex = new RegExp(`\\bgo\\b`, "i");
+                    if (regex.test(trimmed) && isGolangMention(trimmed, "go")) {
+                        seen.add(canonical);
+                        requirements.push({
+                            keyword: "Go / Golang",
+                            normalized: canonical,
+                            isRequired: tier === "required",
+                            isSoft: tier === "soft",
+                            frequency: 1,
+                            tier,
+                            context: trimmed,
+                        });
+                        break;
+                    }
+                    continue;
+                }
+                // Multi-word aliases need phrase matching
+                const regex = alias.includes(" ")
+                    ? new RegExp(`(?:^|[^A-Za-z0-9])${escapeRegex(alias)}(?:[^A-Za-z0-9]|$)`, "i")
+                    : new RegExp(`\\b${escapeRegex(alias)}\\b`, "i");
+                if (regex.test(trimmed)) {
+                    const frequency = (jdText.match(new RegExp(escapeRegex(alias), "gi")) || []).length;
                     seen.add(canonical);
-                    // Count frequency across whole JD
-                    const globalRegex = new RegExp(`\\b${escapeRegex(alias)}\\b`, "gi");
-                    const frequency = (jdText.match(globalRegex) || []).length;
                     requirements.push({
                         keyword: alias,
                         normalized: canonical,
-                        isRequired: isRequiredContext || (!isNiceToHaveContext && frequency >= 2),
+                        isRequired: tier === "required" || (tier === "strong_signal" && frequency >= 2),
+                        isSoft: tier === "soft",
                         frequency,
+                        tier,
+                        context: trimmed,
                     });
-                    break; // Found this canonical, move on
+                    break;
                 }
-            }
-        }
-        // Also extract years of experience mentions
-        const yearsMatch = trimmed.match(/(\d+)\+?\s+years?\s+(?:of\s+)?(?:experience\s+(?:with|in)\s+)?([A-Za-z][A-Za-z0-9\s.#+]{2,30})/i);
-        if (yearsMatch) {
-            const tech = yearsMatch[2].trim().toLowerCase();
-            const canonical = normalize(tech);
-            if (!seen.has(`years_${canonical}`)) {
-                seen.add(`years_${canonical}`);
-                // We just track this as a context note, not a separate requirement
             }
         }
     }
     return requirements;
 }
-function escapeRegex(str) {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-/**
- * Check where a keyword appears in the resume (placement quality).
- */
-function checkPlacement(keyword, aliases, parseResult) {
+// ─── Placement checker ────────────────────────────────────────────
+// Finds WHERE a keyword appears in the resume and returns the actual evidence snippet.
+function checkPlacement(canonical, aliases, parseResult) {
+    const allPatterns = aliases
+        .filter((a) => a !== "go") // "go" handled separately
+        .map((a) => ({
+        pattern: a.includes(" ")
+            ? new RegExp(`(?:^|[^A-Za-z0-9])${escapeRegex(a)}(?:[^A-Za-z0-9]|$)`, "i")
+            : new RegExp(`\\b${escapeRegex(a)}\\b`, "i"),
+        alias: a,
+    }));
+    // Also check semantic group matches
+    const semanticAliases = SEMANTIC_GROUPS[canonical] || [];
+    for (const sem of semanticAliases) {
+        const semAliases = ALIAS_MAP[sem] || [sem];
+        for (const sa of semAliases) {
+            allPatterns.push({
+                pattern: new RegExp(`\\b${escapeRegex(sa)}\\b`, "i"),
+                alias: sa,
+            });
+        }
+    }
     const expSection = parseResult.sections.find((s) => s.name === "experience");
+    const projectsSection = parseResult.sections.find((s) => s.name === "projects");
     const skillsSection = parseResult.sections.find((s) => s.name === "skills");
-    const allAliasPatterns = aliases.map((a) => new RegExp(`\\b${escapeRegex(a)}\\b`, "gi"));
-    // Check if it appears in a bullet in experience section (best placement)
+    // Check experience bullets (best)
     if (expSection) {
-        const bullets = expSection.text.split("\n").filter((l) => /^[•·▪▸→\-–-*]/.test(l.trim()));
+        const bullets = expSection.text.split("\n").filter((l) => /^[\-–•*▸→]/.test(l.trim()) || l.trim().startsWith("–"));
         for (const bullet of bullets) {
-            for (const pattern of allAliasPatterns) {
-                if (pattern.test(bullet)) {
-                    pattern.lastIndex = 0;
-                    return { placement: "bullet_with_context", context: bullet.slice(0, 120) };
-                }
+            for (const { pattern } of allPatterns) {
                 pattern.lastIndex = 0;
+                if (pattern.test(bullet)) {
+                    const snippet = bullet.trim().slice(0, 140);
+                    return { placement: "bullet_with_context", context: snippet, evidenceBullet: snippet };
+                }
             }
         }
-        // Check if it appears anywhere in experience (not just bullets)
-        for (const pattern of allAliasPatterns) {
-            if (pattern.test(expSection.text)) {
-                pattern.lastIndex = 0;
-                const idx = expSection.text.search(pattern);
-                const context = expSection.text.slice(Math.max(0, idx - 30), idx + 80);
-                return { placement: "bullet_with_context", context };
-            }
+        // Check experience body (not just bullets)
+        for (const { pattern } of allPatterns) {
             pattern.lastIndex = 0;
+            if (pattern.test(expSection.text)) {
+                const idx = expSection.text.search(pattern);
+                const snippet = expSection.text.slice(Math.max(0, idx - 20), idx + 100).trim();
+                return { placement: "bullet_with_context", context: snippet };
+            }
+        }
+    }
+    // Check projects section (counts but at lower weight - signals context)
+    if (projectsSection) {
+        for (const { pattern } of allPatterns) {
+            pattern.lastIndex = 0;
+            if (pattern.test(projectsSection.text)) {
+                const idx = projectsSection.text.search(pattern);
+                const snippet = projectsSection.text.slice(Math.max(0, idx - 20), idx + 100).trim();
+                return { placement: "projects_context", context: snippet };
+            }
         }
     }
     // Check skills section
     if (skillsSection) {
-        for (const pattern of allAliasPatterns) {
-            if (pattern.test(skillsSection.text)) {
-                pattern.lastIndex = 0;
-                return { placement: "skills_list_only", context: "Listed in skills section" };
-            }
+        for (const { pattern } of allPatterns) {
             pattern.lastIndex = 0;
+            if (pattern.test(skillsSection.text)) {
+                return { placement: "skills_list_only", context: "Listed in Technical Skills" };
+            }
         }
     }
-    // Check anywhere else in the document
-    for (const pattern of allAliasPatterns) {
+    // Anywhere else
+    for (const { pattern } of allPatterns) {
+        pattern.lastIndex = 0;
         if (pattern.test(parseResult.readingOrderText)) {
-            pattern.lastIndex = 0;
             return { placement: "skills_list_only", context: "Found in resume text" };
         }
-        pattern.lastIndex = 0;
     }
     return { placement: "missing", context: "" };
 }
-/**
- * Match JD requirements against the parse result.
- */
+// ─── Main keyword match function ─────────────────────────────────
 function matchKeywords(jdRequirements, parseResult) {
-    const matches = [];
+    const matched = [];
     const missing = [];
     for (const req of jdRequirements) {
+        // Skip soft/nice-to-have items that say "you don't need to know on day one"
+        // We still report them but mark as non-required
         const aliases = ALIAS_MAP[req.normalized] || [req.keyword];
-        const { placement, context } = checkPlacement(req.normalized, aliases, parseResult);
+        const { placement, context, evidenceBullet } = checkPlacement(req.normalized, aliases, parseResult);
+        const isMatch = placement !== "missing";
         const match = {
             keyword: req.keyword,
             normalized: req.normalized,
-            isRequired: req.isRequired,
-            matched: placement !== "missing",
+            isRequired: req.isRequired && !req.isSoft,
+            matched: isMatch,
             placement,
             context: context || undefined,
+            evidenceBullet,
+            tier: req.tier,
+            isSoft: req.isSoft,
             aliases: aliases.length > 1 ? aliases : undefined,
         };
-        if (placement !== "missing") {
-            matches.push(match);
+        if (isMatch) {
+            matched.push(match);
         }
         else {
             missing.push(match);
         }
     }
-    const total = jdRequirements.length;
-    const matchCount = matches.length;
-    const requiredTotal = jdRequirements.filter((r) => r.isRequired).length;
-    const requiredMatched = matches.filter((m) => m.isRequired).length;
-    const niceToHaveTotal = total - requiredTotal;
-    const niceToHaveMatched = matchCount - requiredMatched;
+    const nonSoftRequirements = jdRequirements.filter((r) => !r.isSoft);
+    const total = nonSoftRequirements.length;
+    const matchCount = matched.filter((m) => !m.isSoft).length;
+    const requiredReqs = nonSoftRequirements.filter((r) => r.isRequired);
+    const requiredTotal = requiredReqs.length;
+    const requiredMatched = matched.filter((m) => m.isRequired && !m.isSoft).length;
+    const niceTotal = total - requiredTotal;
+    const niceMatched = matchCount - requiredMatched;
     return {
-        matched: matches,
-        missing: missing,
+        matched,
+        missing,
         matchRate: total > 0 ? Math.round((matchCount / total) * 100) : 0,
         requiredMatchRate: requiredTotal > 0 ? Math.round((requiredMatched / requiredTotal) * 100) : 0,
-        niceToHaveMatchRate: niceToHaveTotal > 0 ? Math.round((niceToHaveMatched / niceToHaveTotal) * 100) : 0,
+        niceToHaveMatchRate: niceTotal > 0 ? Math.round((niceMatched / niceTotal) * 100) : 0,
     };
 }

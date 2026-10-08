@@ -44,7 +44,8 @@ const RULES = [
         severity: "critical",
         pointsLost: 10,
         check: (p) => {
-            const required = ["experience", "education", "skills", "contact"];
+            // Contact is now an entity (email+phone), not a section - don't require a "Contact" heading
+            const required = ["experience", "education", "skills"];
             const found = p.sections.map((s) => s.name);
             const missing = required.filter((r) => !found.includes(r));
             return { triggered: missing.length > 0, detail: missing.join(", ") };
@@ -122,10 +123,10 @@ const RULES = [
                 return { triggered: false };
             const bullets = expSection.text
                 .split("\n")
-                .filter((l) => l.trim().match(/^[•·▪▸→\-–-*]/));
+                .filter((l) => l.trim().match(/^[•·▪▸→\-–—*]/));
             const longBullets = bullets.filter((b) => b.length > 200);
             const noActionVerb = bullets.filter((b) => {
-                const words = b.replace(/^[•·▪▸→\-–-*\s]+/, "").split(/\s+/);
+                const words = b.replace(/^[•·▪▸→\-–—*\s]+/, "").split(/\s+/);
                 if (words.length === 0)
                     return false;
                 return !/^[A-Z]/.test(words[0]) || words[0].length < 3;

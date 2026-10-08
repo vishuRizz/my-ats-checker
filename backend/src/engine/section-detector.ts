@@ -101,7 +101,7 @@ function isLikelyHeading(
   const text = item.text.trim();
   if (text.length === 0 || text.length > 60) return false;
 
-  const normalized = text.toLowerCase().replace(/[:\-–-|•·]/g, "").trim();
+  const normalized = text.toLowerCase().replace(/[:\-–—|•·]/g, "").trim();
   const isSynonymMatch = SYNONYM_LOOKUP.has(normalized);
 
   // A heading must be the only meaningful text on its line
@@ -125,7 +125,7 @@ function isLikelyHeading(
 }
 
 function normalizeHeading(text: string): string | null {
-  const normalized = text.toLowerCase().replace(/[:\-–-|•·]/g, "").trim();
+  const normalized = text.toLowerCase().replace(/[:\-–—|•·]/g, "").trim();
   return SYNONYM_LOOKUP.get(normalized) || null;
 }
 
@@ -335,7 +335,7 @@ function extractSkillsList(text: string): string[] {
     for (const line of lines) {
       const stripped = line.replace(/^[^:]+:\s*/, "").trim();
       const parts = stripped
-        .replace(/[•·▪▸→\-–-]/g, ",")
+        .replace(/[•·▪▸→\-–—]/g, ",")
         .split(/[,;]/)
         .map((s) => s.trim())
         .filter((s) => s.length > 1 && s.length < 50 && !/^\d+$/.test(s));
@@ -351,7 +351,7 @@ function extractExperienceEntries(text: string) {
   // Match job title - company - date lines
   // Pattern: lines that have a year range or "Present"
   const lines = text.split("\n");
-  const datePattern = /(\d{4})\s*[-–-]\s*(\d{4}|[Pp]resent|[Cc]urrent)/;
+  const datePattern = /(\d{4})\s*[-–—]\s*(\d{4}|[Pp]resent|[Cc]urrent)/;
 
   let currentEntry: any = null;
   for (const line of lines) {

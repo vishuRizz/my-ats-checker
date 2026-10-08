@@ -151,11 +151,11 @@ const RULES: RuleConfig[] = [
 
       const bullets = expSection.text
         .split("\n")
-        .filter((l) => l.trim().match(/^[•·▪▸→\-–-*]/));
+        .filter((l) => l.trim().match(/^[•·▪▸→\-–—*]/));
 
       const longBullets = bullets.filter((b) => b.length > 200);
       const noActionVerb = bullets.filter((b) => {
-        const words = b.replace(/^[•·▪▸→\-–-*\s]+/, "").split(/\s+/);
+        const words = b.replace(/^[•·▪▸→\-–—*\s]+/, "").split(/\s+/);
         if (words.length === 0) return false;
         return !/^[A-Z]/.test(words[0]) || words[0].length < 3;
       });
