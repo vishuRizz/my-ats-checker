@@ -14,12 +14,13 @@ interface AnalysisPanelProps {
   data: AnalysisResponse;
   filename: string;
   resumeFile?: File | null;
+  jdText?: string;
   onReset: () => void;
 }
 
 type Tab = "parse" | "rules" | "score" | "keywords" | "suggest";
 
-export function AnalysisPanel({ data, filename, resumeFile, onReset }: AnalysisPanelProps) {
+export function AnalysisPanel({ data, filename, resumeFile, jdText, onReset }: AnalysisPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("parse");
 
   const { parseResult, rules, keywordReport, scoreBreakdown, meta } = data;
@@ -102,7 +103,7 @@ export function AnalysisPanel({ data, filename, resumeFile, onReset }: AnalysisP
                 color: keywordReport.matchRate >= 70 ? "var(--green)" : keywordReport.matchRate >= 40 ? "var(--amber)" : "var(--red)",
                 bg: keywordReport.matchRate >= 70 ? "var(--green-dim)" : keywordReport.matchRate >= 40 ? "var(--amber-dim)" : "var(--red-dim)",
               },
-            ].filter(Boolean).map((stat: any, i) => (
+            ].filter((stat): stat is { label: string; color: string; bg: string } => Boolean(stat)).map((stat, i) => (
               <span key={i} style={{
                 padding: "4px 12px", borderRadius: 99,
                 background: stat.bg, color: stat.color,
@@ -164,7 +165,7 @@ export function AnalysisPanel({ data, filename, resumeFile, onReset }: AnalysisP
         {activeTab === "rules" && <RulesPanel rules={rules} />}
         {activeTab === "score" && <ScorePanel scoreBreakdown={scoreBreakdown} />}
         {activeTab === "keywords" && keywordReport && <KeywordReport report={keywordReport} />}
-        {activeTab === "suggest" && <SuggestionsPanel data={data} jdText={meta?.jdText} />}
+        {activeTab === "suggest" && <SuggestionsPanel data={data} jdText={jdText} />}
       </div>
     </div>
   );

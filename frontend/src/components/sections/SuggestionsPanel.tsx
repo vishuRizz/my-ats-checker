@@ -70,8 +70,8 @@ export function SuggestionsPanel({ data, jdText }: SuggestionsPanelProps) {
       }
       const result: SuggestionsResponse = await res.json();
       setState({ status: "done", result });
-    } catch (err: any) {
-      setState({ status: "error", message: err?.message || "Failed to get suggestions." });
+    } catch (err: unknown) {
+      setState({ status: "error", message: err instanceof Error ? err.message : "Failed to get suggestions." });
     }
   }, [data.parseResult, jdText]);
 

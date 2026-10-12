@@ -1,0 +1,21 @@
+{
+  "description": "Release targets for the curated evaluation dataset. Enforce these in CI once the dataset includes enough examples for each metric.",
+  "minimumCoverage": {
+    "resumes": 50,
+    "resumeJobDescriptionPairs": 20,
+    "multiColumnResumes": 10,
+    "scannedResumes": 10,
+    "docxResumes": 10
+  },
+  "minimumMetrics": {
+    "sectionRecall": 90,
+    "nameAccuracy": 95,
+    "emailAccuracy": 95,
+    "phoneAccuracy": 95,
+    "skillRecall": 90,
+    "pageCountAccuracy": 95,
+    "multiColumnRecall": 90,
+    "keywordExpectationAccuracy": 95
+  },
+  "maximumRegressionPercentagePoints": 1
+}

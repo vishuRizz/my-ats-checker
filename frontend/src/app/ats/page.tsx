@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import type { AnalysisState, AnalysisResponse } from "@/types";
 import { UploadZone } from "@/components/sections/UploadZone";
 import { AnalysisPanel } from "@/components/sections/AnalysisPanel";
@@ -45,10 +45,10 @@ export default function Home() {
       setState({ status: "analyzing" });
       const data: AnalysisResponse = await response.json();
       setState({ status: "done", data });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setState({
         status: "error",
-        message: err?.message || "Something went wrong. Please try again.",
+        message: err instanceof Error ? err.message : "Something went wrong. Please try again.",
       });
     }
   }, []);
@@ -106,7 +106,7 @@ export default function Home() {
         )}
 
         {state.status === "done" && (
-          <AnalysisPanel data={state.data} filename={resumeFile?.name || "resume"} resumeFile={resumeFile} onReset={handleReset} />
+          <AnalysisPanel data={state.data} filename={resumeFile?.name || "resume"} resumeFile={resumeFile} jdText={jdText} onReset={handleReset} />
         )}
       </div>
     </div>

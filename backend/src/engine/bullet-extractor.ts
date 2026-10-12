@@ -2,7 +2,7 @@
 // Bullet Extractor - pulls experience bullets from ParseResult
 // ============================================================
 
-import type { ParseResult } from "../engine/types.js";
+import type { Section } from "../engine/types.js";
 
 export interface ExtractedBullet {
   text: string;
@@ -13,7 +13,7 @@ export interface ExtractedBullet {
 const BULLET_MARKERS = /^[\s]*[•·▪▸→\-–—*◦▷►]\s+/;
 const NUMBERED = /^[\s]*\d+[.)]\s+/;
 
-export function extractBullets(parseResult: ParseResult): ExtractedBullet[] {
+export function extractBullets(parseResult: { sections: Array<Pick<Section, "name" | "text">> }): ExtractedBullet[] {
   const bullets: ExtractedBullet[] = [];
 
   const targetSections = ["experience", "projects", "achievements", "summary"];

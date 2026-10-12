@@ -122,6 +122,14 @@ export function KeywordReport({ report }: { report: KeywordReportType }) {
 }
 
 function KeywordRow({ keyword, matched, placement, context }: { keyword: string, matched: boolean, placement: string, context?: string }) {
+  const placementLabel = placement === "bullet_with_context"
+    ? "Strong Context"
+    : placement === "projects_context"
+      ? "Project Context"
+      : matched
+        ? "Skills List Only"
+        : "Missing";
+
   return (
     <div style={{ 
       padding: 12, borderRadius: 8, 
@@ -136,7 +144,7 @@ function KeywordRow({ keyword, matched, placement, context }: { keyword: string,
           {keyword}
         </span>
         <span style={{ fontSize: "0.75rem", color: "var(--text-primary)", background: "rgba(0,0,0,0.2)", padding: "2px 8px", borderRadius: 99 }}>
-          {matched ? (placement === "bullet_with_context" ? "Strong Context" : "Skills List Only") : "Missing"}
+          {placementLabel}
         </span>
       </div>
       {context && (

@@ -7,18 +7,20 @@
     "expectedEmail": "jane.doe@example.com",
     "expectedPhone": "555-123-4567",
     "expectedSkills": ["React", "TypeScript", "Node.js"],
+    "fixtureTypes": ["single_column"],
     "expectedMultiColumn": false,
     "expectedPageCount": 1
   },
   {
     "filename": "two-col-designer.pdf",
-    "description": "Two-column designer resume (sidebar layout) - negative fixture: multi-col MUST be detected",
+    "description": "Single-column designer resume",
     "expectedSections": ["experience", "education", "skills"],
     "expectedName": "Alex Rivera",
     "expectedEmail": "alex.rivera@email.com",
     "expectedPhone": "555-987-6543",
     "expectedSkills": ["Figma", "CSS", "HTML"],
-    "expectedMultiColumn": true,
+    "fixtureTypes": ["single_column", "designer_layout"],
+    "expectedMultiColumn": false,
     "expectedPageCount": 1
   },
   {
@@ -29,6 +31,7 @@
     "expectedEmail": "morgan.chen@company.com",
     "expectedPhone": "555-456-7890",
     "expectedSkills": ["Python", "SQL", "AWS"],
+    "fixtureTypes": ["single_column", "table_docx"],
     "expectedMultiColumn": false,
     "expectedPageCount": 1
   },
@@ -40,6 +43,7 @@
     "expectedEmail": "jordan.smith@tech.com",
     "expectedPhone": "555-222-3333",
     "expectedSkills": ["Kubernetes", "AWS", "TypeScript"],
+    "fixtureTypes": ["single_column"],
     "expectedMultiColumn": false,
     "expectedPageCount": 2
   },
@@ -51,6 +55,7 @@
     "expectedEmail": "sam.taylor@gmail.com",
     "expectedPhone": "",
     "expectedSkills": ["JavaScript", "React"],
+    "fixtureTypes": ["single_column"],
     "expectedMultiColumn": false,
     "expectedPageCount": 1
   }

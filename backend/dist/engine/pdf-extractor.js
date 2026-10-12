@@ -24,7 +24,7 @@ async function getPdfjs() {
     }
     return _pdfjsLib;
 }
-async function extractPDFText(buffer) {
+async function extractPDFText(buffer, maxPages = 10) {
     const warnings = [];
     let isImageOnly = false;
     const pageWidths = [];
@@ -44,6 +44,9 @@ async function extractPDFText(buffer) {
         throw new Error(`Failed to open PDF: ${err?.message ?? "unknown error"}`);
     }
     const pageCount = pdf.numPages;
+    if (pageCount > maxPages) {
+        throw new Error(`PDF has ${pageCount} pages. Maximum is ${maxPages} pages.`);
+    }
     const allItems = [];
     let totalTextItems = 0;
     for (let pageNum = 1; pageNum <= pageCount; pageNum++) {

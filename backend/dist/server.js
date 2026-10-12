@@ -16,9 +16,24 @@ const bullet_rewriter_1 = require("./llm/bullet-rewriter");
 const keyword_matcher_1 = require("./engine/keyword-matcher");
 const client_1 = require("./db/client");
 const schema_1 = require("./db/schema");
+const zod_1 = require("zod");
 const PORT = parseInt(process.env.PORT || "3001", 10);
 const HOST = process.env.HOST || "0.0.0.0";
 const ALLOWED_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:3000";
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+const ANALYZE_LIMIT = parseInt(process.env.ANALYZE_LIMIT_PER_HOUR || "10", 10);
+const SUGGEST_LIMIT = parseInt(process.env.SUGGEST_LIMIT_PER_HOUR || "5", 10);
+const MAX_JOB_DESCRIPTION_CHARACTERS = 20_000;
+const suggestRequestSchema = zod_1.z.object({
+    parseResult: zod_1.z.object({
+        bestEffortText: zod_1.z.string().max(100_000).optional(),
+        sections: zod_1.z.array(zod_1.z.object({
+            name: zod_1.z.string().min(1).max(100),
+            text: zod_1.z.string().max(20_000),
+        }).passthrough()).max(100),
+    }).passthrough(),
+    jdText: zod_1.z.string().max(20_000).optional(),
+});
 const fastify = (0, fastify_1.default)({
     logger: {
         level: process.env.LOG_LEVEL || "info",
@@ -27,6 +42,27 @@ const fastify = (0, fastify_1.default)({
             : undefined,
     },
 });
+const analyzeCallsPerIp = new Map();
+const suggestCallsPerIp = new Map();
+function consumeRateLimit(store, ip, limit) {
+    const now = Date.now();
+    const record = store.get(ip);
+    if (record && record.resetAt > now && record.count >= limit)
+        return record.resetAt;
+    if (!record || record.resetAt <= now) {
+        store.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    }
+    else {
+        record.count += 1;
+    }
+    // Keep the simple in-memory limiter bounded until a shared limiter is added with auth.
+    if (store.size > 10_000) {
+        for (const [key, value] of store)
+            if (value.resetAt <= now)
+                store.delete(key);
+    }
+    return null;
+}
 // ─── Plugins ─────────────────────────────────────────────────
 fastify.register(cors_1.default, {
     origin: ALLOWED_ORIGIN === "*" ? true : [ALLOWED_ORIGIN, "http://localhost:3000"],
@@ -53,6 +89,14 @@ fastify.post("/api/analyze", async (request, reply) => {
     let mimeType = "application/octet-stream";
     let jdText = null;
     try {
+        const rateLimitResetAt = consumeRateLimit(analyzeCallsPerIp, request.ip ?? "unknown", ANALYZE_LIMIT);
+        if (rateLimitResetAt) {
+            return reply.status(429).send({
+                error: "rate_limited",
+                message: `Free analysis limit reached (${ANALYZE_LIMIT}/hour). Try again later.`,
+                resetAt: rateLimitResetAt,
+            });
+        }
         const parts = request.parts();
         for await (const part of parts) {
             if (part.type === "file" && part.fieldname === "resume") {
@@ -84,15 +128,33 @@ fastify.post("/api/analyze", async (request, reply) => {
                 message: "No resume file was uploaded. Please attach a PDF or DOCX.",
             });
         }
+        if (jdText && jdText.length > MAX_JOB_DESCRIPTION_CHARACTERS) {
+            return reply.status(400).send({
+                error: "job_description_too_large",
+                message: `Job description must be ${MAX_JOB_DESCRIPTION_CHARACTERS.toLocaleString()} characters or fewer.`,
+            });
+        }
         // ─── Parse ────────────────────────────────────────────────
-        fastify.log.info({ filename, mimeType, size: fileBuffer.length }, "Starting parse");
         const parseResult = await (0, index_1.parse)(fileBuffer, mimeType, filename);
         const parseTime = Date.now() - startTime;
-        fastify.log.info({ parseTime, sections: parseResult.sections.length }, "Parse complete");
+        fastify.log.info({
+            event: "analysis.parse_completed",
+            requestId: request.id,
+            fileType: parseResult.fileType,
+            fileSizeBytes: fileBuffer.length,
+            pageCount: parseResult.pageCount,
+            sectionCount: parseResult.sections.length,
+            durationMs: parseTime,
+        }, "Parse complete");
         // ─── Analyze ──────────────────────────────────────────────
         const analysisResult = await (0, index_1.analyze)(parseResult, jdText || null);
         const totalTime = Date.now() - startTime;
-        fastify.log.info({ totalTime, score: analysisResult.scoreBreakdown.overall }, "Analysis complete");
+        fastify.log.info({
+            event: "analysis.completed",
+            requestId: request.id,
+            hasJobDescription: Boolean(jdText?.trim()),
+            durationMs: totalTime,
+        }, "Analysis complete");
         // ─── Persist to DB (fire-and-forget, never blocks response) ──
         // PRD §5.1: persist resumes + analyses. Anonymous users get 24h auto-delete.
         if (client_1.db) {
@@ -116,11 +178,11 @@ fastify.post("/api/analyze", async (request, reply) => {
                         keywordReport: analysisResult.keywordReport,
                         rules: analysisResult.rules,
                     });
-                    fastify.log.info({ resumeId: resumeRow.id }, "Persisted resume+analysis to DB");
+                    fastify.log.info({ event: "analysis.persisted", resumeId: resumeRow.id }, "Persisted resume+analysis to DB");
                 }
-                catch (dbErr) {
+                catch {
                     // DB errors never surface to the user
-                    fastify.log.warn(dbErr, "DB persistence failed (non-fatal)");
+                    fastify.log.warn({ event: "analysis.persistence_failed" }, "DB persistence failed (non-fatal)");
                 }
             });
         }
@@ -131,55 +193,54 @@ fastify.post("/api/analyze", async (request, reply) => {
                 totalTimeMs: totalTime,
                 filename,
                 fileSize: fileBuffer.length,
-                jdText: jdText ?? undefined,
             },
         });
     }
     catch (err) {
-        fastify.log.error(err, "Analysis error");
-        // Return user-friendly errors without PII
         const message = err?.message || "An unexpected error occurred during analysis.";
         const isUserError = message.includes("too large") ||
             message.includes("password-protected") ||
-            message.includes("Unsupported file") ||
+            message.includes("Unsupported") ||
+            message.includes("invalid file") ||
+            message.includes("Maximum is") ||
+            message.includes("contains too much text") ||
             message.includes("Failed to open") ||
             message.includes("Failed to parse");
+        fastify.log.error({
+            event: "analysis.failed",
+            requestId: request.id,
+            errorType: isUserError ? "invalid_upload" : "internal_error",
+            durationMs: Date.now() - startTime,
+        }, "Analysis failed");
         return reply.status(isUserError ? 400 : 500).send({
             error: isUserError ? "parse_error" : "internal_error",
-            message,
+            message: isUserError ? message : "Unable to analyze this resume right now. Please try again.",
         });
     }
 });
 // ─── POST /api/suggest ────────────────────────────────────────
 // Accepts JSON body: { parseResult: ParseResult, jdText?: string }
 // Returns: { suggestions: BulletSuggestion[], source: "llm" | "rule_based" }
-const suggestCallsPerIp = new Map();
-const SUGGEST_LIMIT = 5; // free calls per hour per IP
 fastify.post("/api/suggest", async (request, reply) => {
-    // Simple IP-based rate limiting
-    const ip = request.ip ?? "unknown";
-    const now = Date.now();
-    const record = suggestCallsPerIp.get(ip);
-    if (record && record.resetAt > now && record.count >= SUGGEST_LIMIT) {
+    const startTime = Date.now();
+    const rateLimitResetAt = consumeRateLimit(suggestCallsPerIp, request.ip ?? "unknown", SUGGEST_LIMIT);
+    if (rateLimitResetAt) {
         return reply.status(429).send({
             error: "rate_limited",
             message: `Free AI rewrite limit reached (${SUGGEST_LIMIT}/hour). Try again later.`,
-            resetAt: record.resetAt,
+            resetAt: rateLimitResetAt,
         });
     }
-    if (!record || record.resetAt <= now) {
-        suggestCallsPerIp.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 });
-    }
-    else {
-        record.count++;
-    }
     try {
-        const body = request.body;
-        if (!body?.parseResult) {
-            return reply.status(400).send({ error: "missing_parse_result", message: "parseResult is required." });
+        const validation = suggestRequestSchema.safeParse(request.body);
+        if (!validation.success) {
+            return reply.status(400).send({
+                error: "invalid_suggest_request",
+                message: "A parsed resume with valid sections is required.",
+            });
         }
-        const parseResult = body.parseResult;
-        const jdText = body.jdText ?? "";
+        const parseResult = validation.data.parseResult;
+        const jdText = validation.data.jdText ?? "";
         // Extract bullets from parse result
         const bullets = (0, bullet_extractor_1.extractBullets)(parseResult);
         if (bullets.length === 0) {
@@ -196,17 +257,17 @@ fastify.post("/api/suggest", async (request, reply) => {
         // Call Groq rewriter
         const suggestions = await (0, bullet_rewriter_1.rewriteBullets)(bullets, jdKeywords, parseResult.bestEffortText ?? "");
         const usedLLM = suggestions.some((s) => s.suggested !== s.original);
-        fastify.log.info({ bulletCount: bullets.length, suggestionCount: suggestions.length, usedLLM }, "Suggest complete");
+        fastify.log.info({ event: "suggest.completed", requestId: request.id, bulletCount: bullets.length, suggestionCount: suggestions.length, usedLLM, durationMs: Date.now() - startTime }, "Suggest complete");
         return reply.status(200).send({
             suggestions,
             source: usedLLM ? "llm" : "rule_based",
         });
     }
     catch (err) {
-        fastify.log.error(err, "Suggest error");
+        fastify.log.error({ event: "suggest.failed", requestId: request.id, durationMs: Date.now() - startTime }, "Suggest failed");
         return reply.status(500).send({
             error: "suggest_error",
-            message: err?.message || "Failed to generate suggestions.",
+            message: "Unable to create suggestions right now. Please try again.",
         });
     }
 });

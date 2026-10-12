@@ -3,7 +3,7 @@
 // ============================================================
 
 export type Severity = "critical" | "warning" | "info";
-export type KeywordPlacement = "bullet_with_context" | "skills_list_only" | "missing";
+export type KeywordPlacement = "bullet_with_context" | "projects_context" | "skills_list_only" | "missing";
 
 export interface Section {
   name: string;
@@ -19,8 +19,8 @@ export interface ExtractedEntities {
   phone: { value: string; confidence: number };
   links: string[];
   skills: string[];
-  experience: any[];
-  education: any[];
+  experience: Array<Record<string, unknown>>;
+  education: Array<Record<string, unknown>>;
 }
 
 export interface LostRegion {
@@ -63,16 +63,19 @@ export interface RuleResult {
   explanation: string;
   fix: string;
   pointsLost: number;
-  location?: { page: number };
+  location?: { page: number; bbox?: { x0: number; y0: number; x1: number; y1: number } };
 }
 
 export interface KeywordMatch {
   keyword: string;
   normalized: string;
   isRequired: boolean;
+  isSoft?: boolean;
   matched: boolean;
   placement: KeywordPlacement;
   context?: string;
+  evidenceBullet?: string;
+  tier?: "required" | "strong_signal" | "soft";
   aliases?: string[];
 }
 
@@ -108,6 +111,7 @@ export interface ScoreBreakdown {
   experienceRelevance?: ScoreCategory;
   hasJD: boolean;
   estimatedLabel: string;
+  scoreFormula: string;
 }
 
 export interface AnalysisResponse {
@@ -121,7 +125,6 @@ export interface AnalysisResponse {
     totalTimeMs: number;
     filename: string;
     fileSize: number;
-    jdText?: string;
   };
 }
 

@@ -18,6 +18,14 @@ export function ScorePanel({ scoreBreakdown }: { scoreBreakdown: ScoreBreakdown 
         Each category is weighted to produce the final score. <strong>No magic numbers.</strong>
       </p>
 
+      <div style={{
+        padding: "12px 16px", borderRadius: 8, background: "var(--bg-elevated)",
+        border: "1px solid var(--border)", color: "var(--text-secondary)", fontSize: "0.82rem", lineHeight: 1.55,
+      }}>
+        <strong style={{ color: "var(--text-primary)" }}>Formula: </strong>
+        {scoreBreakdown.scoreFormula}
+      </div>
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
         {categories.map((cat, i) => (
           <CategoryCard key={i} category={cat} />

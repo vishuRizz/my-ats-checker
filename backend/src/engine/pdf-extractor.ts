@@ -32,7 +32,7 @@ async function getPdfjs() {
   return _pdfjsLib;
 }
 
-export async function extractPDFText(buffer: Buffer): Promise<RawPDFData> {
+export async function extractPDFText(buffer: Buffer, maxPages = 10): Promise<RawPDFData> {
   const warnings: ParseWarning[] = [];
   let isImageOnly = false;
   const pageWidths: number[] = [];
@@ -54,6 +54,9 @@ export async function extractPDFText(buffer: Buffer): Promise<RawPDFData> {
   }
 
   const pageCount: number = pdf.numPages;
+  if (pageCount > maxPages) {
+    throw new Error(`PDF has ${pageCount} pages. Maximum is ${maxPages} pages.`);
+  }
   const allItems: TextItem[] = [];
   let totalTextItems = 0;
 

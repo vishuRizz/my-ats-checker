@@ -205,6 +205,7 @@ export function UploadZone({ onAnalyze, jdText, onJdChange }: UploadZoneProps) {
               id="jd-textarea"
               value={jdText}
               onChange={(e) => onJdChange(e.target.value)}
+              maxLength={20_000}
               placeholder="Paste job description here...
 
 We're looking for a Senior Software Engineer with 5+ years of experience in React, TypeScript, and Node.js. Required: experience with AWS, PostgreSQL, and CI/CD pipelines. Nice to have: GraphQL, Kubernetes..."
@@ -227,7 +228,7 @@ We're looking for a Senior Software Engineer with 5+ years of experience in Reac
             />
             {jdText && (
               <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 8 }}>
-                {jdText.split(/\s+/).filter(Boolean).length} words · {jdText.length} characters
+                {jdText.split(/\s+/).filter(Boolean).length} words · {jdText.length.toLocaleString()} / 20,000 characters
               </p>
             )}
           </div>

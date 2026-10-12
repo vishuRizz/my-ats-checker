@@ -13,10 +13,17 @@ import { computeScore } from "./scorer.js";
 import type { ParseResult, AnalysisResponse, LostRegion } from "./types.js";
 
 const ENGINE_VERSION = "1.0.1-phase1";
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_PAGE_COUNT = 10;
 
 function detectFileType(buffer: Buffer): "pdf" | "docx" | "unknown" {
   if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46) return "pdf";
-  if (buffer[0] === 0x50 && buffer[1] === 0x4b) return "docx";
+  // DOCX is a ZIP archive, but arbitrary ZIP files must not be accepted as resumes.
+  if (
+    buffer[0] === 0x50 && buffer[1] === 0x4b &&
+    buffer.includes(Buffer.from("[Content_Types].xml")) &&
+    buffer.includes(Buffer.from("word/document.xml"))
+  ) return "docx";
   return "unknown";
 }
 
@@ -25,21 +32,16 @@ export async function parse(
   mimeType: string,
   filename: string
 ): Promise<ParseResult> {
-  const MAX_SIZE = 5 * 1024 * 1024;
-  if (buffer.length > MAX_SIZE) {
+  if (buffer.length > MAX_FILE_SIZE_BYTES) {
     throw new Error(`File too large: ${(buffer.length / 1024 / 1024).toFixed(1)}MB. Maximum is 5MB.`);
   }
 
-  const isPDF =
-    mimeType === "application/pdf" ||
-    filename.toLowerCase().endsWith(".pdf") ||
-    detectFileType(buffer) === "pdf";
-  const isDOCX =
-    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-    filename.toLowerCase().endsWith(".docx");
+  const detectedFileType = detectFileType(buffer);
+  const isPDF = detectedFileType === "pdf";
+  const isDOCX = detectedFileType === "docx";
 
   if (!isPDF && !isDOCX) {
-    throw new Error("Unsupported file type. Please upload a PDF or DOCX file.");
+    throw new Error("Unsupported or invalid file. Upload a valid PDF or DOCX file.");
   }
 
   const fileType: "pdf" | "docx" = isPDF ? "pdf" : "docx";
@@ -55,7 +57,7 @@ export async function parse(
   let links: { url: string; label: string; page: number }[] = [];
 
   if (isPDF) {
-    const pdfData = await extractPDFText(buffer);
+    const pdfData = await extractPDFText(buffer, MAX_PAGE_COUNT);
     textItems    = pdfData.textItems;
     pageCount    = pdfData.pageCount;
     pageWidths   = pdfData.pageWidths;
@@ -69,6 +71,9 @@ export async function parse(
     warnings  = docxData.warnings;
     hasTable  = docxData.hasTable;
     rawText   = docxData.rawText;
+    if (rawText.length > 200_000) {
+      throw new Error("DOCX contains too much text. Please upload a resume with fewer than 200,000 characters.");
+    }
     pageCount = Math.ceil(rawText.length / 3000);
   }
 
