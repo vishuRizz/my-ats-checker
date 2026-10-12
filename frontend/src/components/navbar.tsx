@@ -5,12 +5,12 @@ import { motion } from "framer-motion"
 import { Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { Show, SignInButton, UserButton } from "@clerk/nextjs"
 
 const navItems = [
   { label: "Features", href: "#features" },
   { label: "Pricing", href: "#pricing" },
-  { label: "Docs", href: "#docs" },
-  { label: "Blog", href: "#blog" },
+  { label: "Scanner", href: "/ats" },
 ]
 
 export function Navbar() {
@@ -60,11 +60,29 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* CTA Buttons */}
+        {/* CTA & Auth Buttons */}
         <div className="hidden md:flex items-center gap-3">
+          <Show when="signed-in">
+            <Link
+              href="/profile"
+              className="text-xs font-medium text-zinc-300 hover:text-white bg-zinc-800/80 hover:bg-zinc-800 px-3 py-1.5 rounded-full transition-colors"
+            >
+              History
+            </Link>
+            <UserButton />
+          </Show>
+
+          <Show when="signed-out">
+            <SignInButton mode="modal">
+              <button className="text-xs font-semibold text-zinc-300 hover:text-white px-3 py-1.5 transition-colors">
+                Sign In
+              </button>
+            </SignInButton>
+          </Show>
+
           <Link href="/ats">
-            <Button size="sm" className="shimmer-btn bg-white text-zinc-950 hover:bg-zinc-200 rounded-full px-4">
-              Try for Free
+            <Button size="sm" className="shimmer-btn bg-white text-zinc-950 hover:bg-zinc-200 rounded-full px-4 text-xs font-semibold">
+              Scan Resume
             </Button>
           </Link>
         </div>
@@ -98,9 +116,28 @@ export function Navbar() {
                 {item.label}
               </a>
             ))}
+            <Show when="signed-in">
+              <Link
+                href="/profile"
+                className="px-4 py-3 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors flex items-center justify-between"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span>Profile & History</span>
+                <UserButton />
+              </Link>
+            </Show>
+            <Show when="signed-out">
+              <SignInButton mode="modal">
+                <button className="text-left px-4 py-3 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors">
+                  Sign In
+                </button>
+              </SignInButton>
+            </Show>
             <hr className="border-zinc-800 my-2" />
             <Link href="/ats" className="w-full">
-              <Button className="w-full bg-white text-zinc-950 hover:bg-zinc-200 rounded-full">Try for Free</Button>
+              <Button className="w-full bg-white text-zinc-950 hover:bg-zinc-200 rounded-full">
+                Scan Resume
+              </Button>
             </Link>
           </div>
         </motion.div>

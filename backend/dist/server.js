@@ -17,6 +17,7 @@ const application_kit_1 = require("./llm/application-kit");
 const keyword_matcher_1 = require("./engine/keyword-matcher");
 const client_1 = require("./db/client");
 const schema_1 = require("./db/schema");
+const drizzle_orm_1 = require("drizzle-orm");
 const zod_1 = require("zod");
 const PORT = parseInt(process.env.PORT || "3001", 10);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -117,6 +118,8 @@ fastify.post("/api/analyze", async (request, reply) => {
                 resetAt: rateLimitResetAt,
             });
         }
+        let clerkId = request.headers["x-clerk-user-id"] || null;
+        let userEmail = request.headers["x-clerk-user-email"] || null;
         const parts = request.parts();
         for await (const part of parts) {
             if (part.type === "file" && part.fieldname === "resume") {
@@ -138,8 +141,13 @@ fastify.post("/api/analyze", async (request, reply) => {
                 mimeType = part.mimetype;
                 fileBuffer = await part.toBuffer();
             }
-            else if (part.type === "field" && part.fieldname === "jd") {
-                jdText = part.value;
+            else if (part.type === "field") {
+                if (part.fieldname === "jd")
+                    jdText = part.value;
+                if (part.fieldname === "clerkId")
+                    clerkId = part.value;
+                if (part.fieldname === "userEmail")
+                    userEmail = part.value;
             }
         }
         if (!fileBuffer) {
@@ -176,33 +184,94 @@ fastify.post("/api/analyze", async (request, reply) => {
             durationMs: totalTime,
         }, "Analysis complete");
         // ─── Persist to DB (fire-and-forget, never blocks response) ──
-        // PRD §5.1: persist resumes + analyses. Anonymous users get 24h auto-delete.
+        let persistedResumeId = null;
         if (client_1.db) {
             const capturedBuffer = fileBuffer;
+            const capturedClerkId = clerkId;
+            const capturedUserEmail = userEmail;
+            const capturedJdText = jdText;
             setImmediate(async () => {
                 try {
+                    let dbUserId = null;
+                    if (capturedClerkId) {
+                        const existingUsers = await client_1.db
+                            .select()
+                            .from(schema_1.users)
+                            .where((0, drizzle_orm_1.eq)(schema_1.users.clerkId, capturedClerkId))
+                            .limit(1);
+                        if (existingUsers.length > 0) {
+                            dbUserId = existingUsers[0].id;
+                            if (capturedUserEmail && existingUsers[0].email !== capturedUserEmail) {
+                                await client_1.db
+                                    .update(schema_1.users)
+                                    .set({ email: capturedUserEmail, updatedAt: new Date() })
+                                    .where((0, drizzle_orm_1.eq)(schema_1.users.id, dbUserId));
+                            }
+                        }
+                        else {
+                            const [newUser] = await client_1.db
+                                .insert(schema_1.users)
+                                .values({
+                                clerkId: capturedClerkId,
+                                email: capturedUserEmail || null,
+                            })
+                                .returning({ id: schema_1.users.id });
+                            dbUserId = newUser.id;
+                        }
+                    }
+                    let jdRowId = null;
+                    if (capturedJdText && capturedJdText.trim()) {
+                        const [jdRow] = await client_1.db
+                            .insert(schema_1.jobDescriptions)
+                            .values({
+                            userId: dbUserId,
+                            rawText: capturedJdText.trim(),
+                            extractedRequirements: analysisResult.keywordReport
+                                ? {
+                                    matched: analysisResult.keywordReport.matched,
+                                    missing: analysisResult.keywordReport.missing,
+                                }
+                                : null,
+                        })
+                            .returning({ id: schema_1.jobDescriptions.id });
+                        jdRowId = jdRow.id;
+                    }
                     const [resumeRow] = await client_1.db
                         .insert(schema_1.resumes)
                         .values({
+                        userId: dbUserId,
                         filename,
                         fileType: parseResult.fileType,
                         fileSizeBytes: capturedBuffer.length,
                         status: "done",
-                        // Auto-delete in 24h for anonymous uploads (PRD §9)
-                        deleteAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+                        deleteAt: dbUserId ? null : new Date(Date.now() + 24 * 60 * 60 * 1000),
                     })
                         .returning({ id: schema_1.resumes.id });
+                    persistedResumeId = resumeRow.id;
+                    await client_1.db.insert(schema_1.parseResults).values({
+                        resumeId: resumeRow.id,
+                        parserVersion: parseResult.parserVersion || "2.0.0",
+                        pageCount: parseResult.pageCount,
+                        isMultiColumn: parseResult.isMultiColumn,
+                        isImageOnly: parseResult.isImageOnly,
+                        readingOrderText: parseResult.readingOrderText,
+                        bestEffortText: parseResult.bestEffortText,
+                        sections: parseResult.sections,
+                        entities: parseResult.entities,
+                        lostRegions: parseResult.lostRegions,
+                        warnings: parseResult.warnings,
+                    });
                     await client_1.db.insert(schema_1.analyses).values({
                         resumeId: resumeRow.id,
+                        jdId: jdRowId,
                         scoreBreakdown: analysisResult.scoreBreakdown,
                         keywordReport: analysisResult.keywordReport,
                         rules: analysisResult.rules,
                     });
-                    fastify.log.info({ event: "analysis.persisted", resumeId: resumeRow.id }, "Persisted resume+analysis to DB");
+                    fastify.log.info({ event: "analysis.persisted", resumeId: resumeRow.id, userId: dbUserId }, "Persisted scan to DB");
                 }
-                catch {
-                    // DB errors never surface to the user
-                    fastify.log.warn({ event: "analysis.persistence_failed" }, "DB persistence failed (non-fatal)");
+                catch (e) {
+                    fastify.log.warn({ event: "analysis.persistence_failed", err: e?.message }, "DB persistence failed");
                 }
             });
         }
@@ -333,6 +402,112 @@ fastify.post("/api/generate-kit", async (request, reply) => {
             error: "kit_generation_error",
             message: "Unable to generate application kit right now. Please try again.",
         });
+    }
+});
+// ─── GET /api/user/scans ──────────────────────────────────────
+// Returns all past scans for an authenticated Clerk user
+fastify.get("/api/user/scans", async (request, reply) => {
+    if (!client_1.db)
+        return reply.send({ scans: [] });
+    const { clerkId } = request.query;
+    if (!clerkId) {
+        return reply.status(400).send({ error: "missing_clerk_id", message: "clerkId is required." });
+    }
+    try {
+        const userRecord = await client_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.clerkId, clerkId)).limit(1);
+        if (userRecord.length === 0) {
+            return reply.send({ scans: [] });
+        }
+        const userResumes = await client_1.db
+            .select({
+            id: schema_1.resumes.id,
+            filename: schema_1.resumes.filename,
+            fileType: schema_1.resumes.fileType,
+            fileSizeBytes: schema_1.resumes.fileSizeBytes,
+            uploadedAt: schema_1.resumes.uploadedAt,
+            status: schema_1.resumes.status,
+            scoreBreakdown: schema_1.analyses.scoreBreakdown,
+            keywordReport: schema_1.analyses.keywordReport,
+        })
+            .from(schema_1.resumes)
+            .leftJoin(schema_1.analyses, (0, drizzle_orm_1.eq)(schema_1.analyses.resumeId, schema_1.resumes.id))
+            .where((0, drizzle_orm_1.eq)(schema_1.resumes.userId, userRecord[0].id))
+            .orderBy((0, drizzle_orm_1.desc)(schema_1.resumes.uploadedAt));
+        const scans = userResumes.map((r) => {
+            const sb = r.scoreBreakdown;
+            const kw = r.keywordReport;
+            return {
+                id: r.id,
+                filename: r.filename,
+                fileType: r.fileType,
+                fileSizeBytes: r.fileSizeBytes,
+                uploadedAt: r.uploadedAt,
+                overallScore: sb?.overall ?? 0,
+                hasJD: Boolean(kw),
+                matchRate: kw?.matchRate ?? null,
+                requiredMatchRate: kw?.requiredMatchRate ?? null,
+            };
+        });
+        return reply.send({ scans });
+    }
+    catch (err) {
+        fastify.log.error({ event: "get_scans_failed", err: err?.message }, "Failed to get user scans");
+        return reply.status(500).send({ error: "db_error", message: "Failed to load scans." });
+    }
+});
+// ─── GET /api/scans/:id ───────────────────────────────────────
+// Returns full analysis payload for a saved scan
+fastify.get("/api/scans/:id", async (request, reply) => {
+    if (!client_1.db)
+        return reply.status(503).send({ error: "db_unavailable" });
+    const { id } = request.params;
+    try {
+        const resumeRows = await client_1.db.select().from(schema_1.resumes).where((0, drizzle_orm_1.eq)(schema_1.resumes.id, id)).limit(1);
+        if (resumeRows.length === 0) {
+            return reply.status(404).send({ error: "not_found", message: "Scan not found." });
+        }
+        const analysisRows = await client_1.db.select().from(schema_1.analyses).where((0, drizzle_orm_1.eq)(schema_1.analyses.resumeId, id)).limit(1);
+        const parseRows = await client_1.db.select().from(schema_1.parseResults).where((0, drizzle_orm_1.eq)(schema_1.parseResults.resumeId, id)).limit(1);
+        let jdText = "";
+        if (analysisRows[0]?.jdId) {
+            const jdRows = await client_1.db.select().from(schema_1.jobDescriptions).where((0, drizzle_orm_1.eq)(schema_1.jobDescriptions.id, analysisRows[0].jdId)).limit(1);
+            jdText = jdRows[0]?.rawText || "";
+        }
+        if (!analysisRows[0] || !parseRows[0]) {
+            return reply.status(404).send({ error: "analysis_missing", message: "Scan details unavailable." });
+        }
+        return reply.send({
+            filename: resumeRows[0].filename,
+            parseResult: parseRows[0],
+            rules: analysisRows[0].rules || [],
+            keywordReport: analysisRows[0].keywordReport || null,
+            scoreBreakdown: analysisRows[0].scoreBreakdown,
+            engineVersion: "2.0.0",
+            jdText,
+            meta: {
+                parseTimeMs: 0,
+                totalTimeMs: 0,
+                filename: resumeRows[0].filename,
+                fileSize: resumeRows[0].fileSizeBytes || 0,
+            },
+        });
+    }
+    catch (err) {
+        fastify.log.error({ event: "get_scan_detail_failed", err: err?.message }, "Failed to get scan details");
+        return reply.status(500).send({ error: "db_error", message: "Failed to load scan." });
+    }
+});
+// ─── DELETE /api/scans/:id ────────────────────────────────────
+fastify.delete("/api/scans/:id", async (request, reply) => {
+    if (!client_1.db)
+        return reply.status(503).send({ error: "db_unavailable" });
+    const { id } = request.params;
+    try {
+        await client_1.db.delete(schema_1.resumes).where((0, drizzle_orm_1.eq)(schema_1.resumes.id, id));
+        return reply.send({ success: true });
+    }
+    catch (err) {
+        return reply.status(500).send({ error: "delete_failed", message: "Unable to delete scan." });
     }
 });
 // ─── Start ────────────────────────────────────────────────────

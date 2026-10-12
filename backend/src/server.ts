@@ -12,7 +12,8 @@ import { rewriteBullets } from "./llm/bullet-rewriter";
 import { generateApplicationKit } from "./llm/application-kit";
 import { extractJDRequirements } from "./engine/keyword-matcher";
 import { db } from "./db/client";
-import { resumes, analyses } from "./db/schema";
+import { resumes, analyses, users, jobDescriptions, parseResults } from "./db/schema";
+import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 
 const PORT = parseInt(process.env.PORT || "3001", 10);
@@ -133,6 +134,9 @@ fastify.post("/api/analyze", async (request, reply) => {
       });
     }
 
+    let clerkId: string | null = (request.headers["x-clerk-user-id"] as string) || null;
+    let userEmail: string | null = (request.headers["x-clerk-user-email"] as string) || null;
+
     const parts = request.parts();
 
     for await (const part of parts) {
@@ -157,8 +161,10 @@ fastify.post("/api/analyze", async (request, reply) => {
         filename = part.filename || "resume";
         mimeType = part.mimetype;
         fileBuffer = await part.toBuffer();
-      } else if (part.type === "field" && part.fieldname === "jd") {
-        jdText = (part as any).value as string;
+      } else if (part.type === "field") {
+        if (part.fieldname === "jd") jdText = (part as any).value as string;
+        if (part.fieldname === "clerkId") clerkId = (part as any).value as string;
+        if (part.fieldname === "userEmail") userEmail = (part as any).value as string;
       }
     }
 
@@ -200,34 +206,100 @@ fastify.post("/api/analyze", async (request, reply) => {
     }, "Analysis complete");
 
     // ─── Persist to DB (fire-and-forget, never blocks response) ──
-    // PRD §5.1: persist resumes + analyses. Anonymous users get 24h auto-delete.
+    let persistedResumeId: string | null = null;
     if (db) {
       const capturedBuffer = fileBuffer;
+      const capturedClerkId = clerkId;
+      const capturedUserEmail = userEmail;
+      const capturedJdText = jdText;
+
       setImmediate(async () => {
         try {
+          let dbUserId: string | null = null;
+          if (capturedClerkId) {
+            const existingUsers = await db!
+              .select()
+              .from(users)
+              .where(eq(users.clerkId, capturedClerkId))
+              .limit(1);
+
+            if (existingUsers.length > 0) {
+              dbUserId = existingUsers[0].id;
+              if (capturedUserEmail && existingUsers[0].email !== capturedUserEmail) {
+                await db!
+                  .update(users)
+                  .set({ email: capturedUserEmail, updatedAt: new Date() })
+                  .where(eq(users.id, dbUserId));
+              }
+            } else {
+              const [newUser] = await db!
+                .insert(users)
+                .values({
+                  clerkId: capturedClerkId,
+                  email: capturedUserEmail || null,
+                })
+                .returning({ id: users.id });
+              dbUserId = newUser.id;
+            }
+          }
+
+          let jdRowId: string | null = null;
+          if (capturedJdText && capturedJdText.trim()) {
+            const [jdRow] = await db!
+              .insert(jobDescriptions)
+              .values({
+                userId: dbUserId,
+                rawText: capturedJdText.trim(),
+                extractedRequirements: analysisResult.keywordReport
+                  ? {
+                      matched: analysisResult.keywordReport.matched,
+                      missing: analysisResult.keywordReport.missing,
+                    }
+                  : null,
+              })
+              .returning({ id: jobDescriptions.id });
+            jdRowId = jdRow.id;
+          }
+
           const [resumeRow] = await db!
             .insert(resumes)
             .values({
+              userId: dbUserId,
               filename,
               fileType: parseResult.fileType,
               fileSizeBytes: capturedBuffer.length,
               status: "done",
-              // Auto-delete in 24h for anonymous uploads (PRD §9)
-              deleteAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+              deleteAt: dbUserId ? null : new Date(Date.now() + 24 * 60 * 60 * 1000),
             })
             .returning({ id: resumes.id });
 
+          persistedResumeId = resumeRow.id;
+
+          await db!.insert(parseResults).values({
+            resumeId: resumeRow.id,
+            parserVersion: parseResult.parserVersion || "2.0.0",
+            pageCount: parseResult.pageCount,
+            isMultiColumn: parseResult.isMultiColumn,
+            isImageOnly: parseResult.isImageOnly,
+            readingOrderText: parseResult.readingOrderText,
+            bestEffortText: parseResult.bestEffortText,
+            sections: parseResult.sections as any,
+            entities: parseResult.entities as any,
+            lostRegions: parseResult.lostRegions as any,
+            warnings: parseResult.warnings as any,
+          });
+
           await db!.insert(analyses).values({
             resumeId: resumeRow.id,
+            jdId: jdRowId,
             scoreBreakdown: analysisResult.scoreBreakdown as any,
             keywordReport: analysisResult.keywordReport as any,
             rules: analysisResult.rules as any,
           });
 
-          fastify.log.info({ event: "analysis.persisted", resumeId: resumeRow.id }, "Persisted resume+analysis to DB");
-        } catch {
-          // DB errors never surface to the user
-          fastify.log.warn({ event: "analysis.persistence_failed" }, "DB persistence failed (non-fatal)");
+          fastify.log.info({ event: "analysis.persisted", resumeId: resumeRow.id, userId: dbUserId }, "Persisted scan to DB");
+        } catch (e: any) {
+          fastify.log.warn({ event: "analysis.persistence_failed", err: e?.message }, "DB persistence failed");
         }
       });
     }
@@ -382,6 +454,118 @@ fastify.post("/api/generate-kit", async (request, reply) => {
       error: "kit_generation_error",
       message: "Unable to generate application kit right now. Please try again.",
     });
+  }
+});
+
+// ─── GET /api/user/scans ──────────────────────────────────────
+// Returns all past scans for an authenticated Clerk user
+fastify.get("/api/user/scans", async (request, reply) => {
+  if (!db) return reply.send({ scans: [] });
+  const { clerkId } = request.query as { clerkId?: string };
+  if (!clerkId) {
+    return reply.status(400).send({ error: "missing_clerk_id", message: "clerkId is required." });
+  }
+
+  try {
+    const userRecord = await db.select().from(users).where(eq(users.clerkId, clerkId)).limit(1);
+    if (userRecord.length === 0) {
+      return reply.send({ scans: [] });
+    }
+
+    const userResumes = await db
+      .select({
+        id: resumes.id,
+        filename: resumes.filename,
+        fileType: resumes.fileType,
+        fileSizeBytes: resumes.fileSizeBytes,
+        uploadedAt: resumes.uploadedAt,
+        status: resumes.status,
+        scoreBreakdown: analyses.scoreBreakdown,
+        keywordReport: analyses.keywordReport,
+      })
+      .from(resumes)
+      .leftJoin(analyses, eq(analyses.resumeId, resumes.id))
+      .where(eq(resumes.userId, userRecord[0].id))
+      .orderBy(desc(resumes.uploadedAt));
+
+    const scans = userResumes.map((r) => {
+      const sb = r.scoreBreakdown as any;
+      const kw = r.keywordReport as any;
+      return {
+        id: r.id,
+        filename: r.filename,
+        fileType: r.fileType,
+        fileSizeBytes: r.fileSizeBytes,
+        uploadedAt: r.uploadedAt,
+        overallScore: sb?.overall ?? 0,
+        hasJD: Boolean(kw),
+        matchRate: kw?.matchRate ?? null,
+        requiredMatchRate: kw?.requiredMatchRate ?? null,
+      };
+    });
+
+    return reply.send({ scans });
+  } catch (err: any) {
+    fastify.log.error({ event: "get_scans_failed", err: err?.message }, "Failed to get user scans");
+    return reply.status(500).send({ error: "db_error", message: "Failed to load scans." });
+  }
+});
+
+// ─── GET /api/scans/:id ───────────────────────────────────────
+// Returns full analysis payload for a saved scan
+fastify.get("/api/scans/:id", async (request, reply) => {
+  if (!db) return reply.status(503).send({ error: "db_unavailable" });
+  const { id } = request.params as { id: string };
+
+  try {
+    const resumeRows = await db.select().from(resumes).where(eq(resumes.id, id)).limit(1);
+    if (resumeRows.length === 0) {
+      return reply.status(404).send({ error: "not_found", message: "Scan not found." });
+    }
+
+    const analysisRows = await db.select().from(analyses).where(eq(analyses.resumeId, id)).limit(1);
+    const parseRows = await db.select().from(parseResults).where(eq(parseResults.resumeId, id)).limit(1);
+    let jdText = "";
+    if (analysisRows[0]?.jdId) {
+      const jdRows = await db.select().from(jobDescriptions).where(eq(jobDescriptions.id, analysisRows[0].jdId)).limit(1);
+      jdText = jdRows[0]?.rawText || "";
+    }
+
+    if (!analysisRows[0] || !parseRows[0]) {
+      return reply.status(404).send({ error: "analysis_missing", message: "Scan details unavailable." });
+    }
+
+    return reply.send({
+      filename: resumeRows[0].filename,
+      parseResult: parseRows[0],
+      rules: (analysisRows[0].rules as any) || [],
+      keywordReport: (analysisRows[0].keywordReport as any) || null,
+      scoreBreakdown: analysisRows[0].scoreBreakdown as any,
+      engineVersion: "2.0.0",
+      jdText,
+      meta: {
+        parseTimeMs: 0,
+        totalTimeMs: 0,
+        filename: resumeRows[0].filename,
+        fileSize: resumeRows[0].fileSizeBytes || 0,
+      },
+    });
+  } catch (err: any) {
+    fastify.log.error({ event: "get_scan_detail_failed", err: err?.message }, "Failed to get scan details");
+    return reply.status(500).send({ error: "db_error", message: "Failed to load scan." });
+  }
+});
+
+// ─── DELETE /api/scans/:id ────────────────────────────────────
+fastify.delete("/api/scans/:id", async (request, reply) => {
+  if (!db) return reply.status(503).send({ error: "db_unavailable" });
+  const { id } = request.params as { id: string };
+
+  try {
+    await db.delete(resumes).where(eq(resumes.id, id));
+    return reply.send({ success: true });
+  } catch (err: any) {
+    return reply.status(500).send({ error: "delete_failed", message: "Unable to delete scan." });
   }
 });
 
