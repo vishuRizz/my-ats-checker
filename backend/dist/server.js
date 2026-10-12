@@ -13,6 +13,7 @@ const multipart_1 = __importDefault(require("@fastify/multipart"));
 const index_1 = require("./engine/index");
 const bullet_extractor_1 = require("./engine/bullet-extractor");
 const bullet_rewriter_1 = require("./llm/bullet-rewriter");
+const application_kit_1 = require("./llm/application-kit");
 const keyword_matcher_1 = require("./engine/keyword-matcher");
 const client_1 = require("./db/client");
 const schema_1 = require("./db/schema");
@@ -23,6 +24,7 @@ const ALLOWED_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:3000";
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const ANALYZE_LIMIT = parseInt(process.env.ANALYZE_LIMIT_PER_HOUR || "10", 10);
 const SUGGEST_LIMIT = parseInt(process.env.SUGGEST_LIMIT_PER_HOUR || "5", 10);
+const KIT_LIMIT = parseInt(process.env.KIT_LIMIT_PER_HOUR || "5", 10);
 const MAX_JOB_DESCRIPTION_CHARACTERS = 20_000;
 const suggestRequestSchema = zod_1.z.object({
     parseResult: zod_1.z.object({
@@ -34,6 +36,23 @@ const suggestRequestSchema = zod_1.z.object({
     }).passthrough(),
     jdText: zod_1.z.string().max(20_000).optional(),
 });
+const generateKitSchema = zod_1.z.object({
+    parseResult: zod_1.z.object({
+        bestEffortText: zod_1.z.string().max(100_000).optional(),
+        readingOrderText: zod_1.z.string().max(100_000).optional(),
+        sections: zod_1.z.array(zod_1.z.object({
+            name: zod_1.z.string().min(1).max(100),
+            text: zod_1.z.string().max(20_000),
+        }).passthrough()).max(100).optional(),
+        entities: zod_1.z.object({
+            name: zod_1.z.object({ value: zod_1.z.string() }).optional(),
+            skills: zod_1.z.array(zod_1.z.string()).optional(),
+        }).passthrough().optional(),
+    }).passthrough(),
+    jdText: zod_1.z.string().min(10, "Job description is required to tailor the application kit.").max(20_000),
+    type: zod_1.z.enum(["cover_letter", "linkedin_summary"]),
+    tone: zod_1.z.enum(["professional", "confident", "concise"]).optional(),
+});
 const fastify = (0, fastify_1.default)({
     logger: {
         level: process.env.LOG_LEVEL || "info",
@@ -44,6 +63,7 @@ const fastify = (0, fastify_1.default)({
 });
 const analyzeCallsPerIp = new Map();
 const suggestCallsPerIp = new Map();
+const kitCallsPerIp = new Map();
 function consumeRateLimit(store, ip, limit) {
     const now = Date.now();
     const record = store.get(ip);
@@ -65,7 +85,7 @@ function consumeRateLimit(store, ip, limit) {
 }
 // ─── Plugins ─────────────────────────────────────────────────
 fastify.register(cors_1.default, {
-    origin: ALLOWED_ORIGIN === "*" ? true : [ALLOWED_ORIGIN, "http://localhost:3000"],
+    origin: true,
     methods: ["GET", "POST", "OPTIONS"],
 });
 fastify.register(multipart_1.default, {
@@ -268,6 +288,50 @@ fastify.post("/api/suggest", async (request, reply) => {
         return reply.status(500).send({
             error: "suggest_error",
             message: "Unable to create suggestions right now. Please try again.",
+        });
+    }
+});
+// ─── POST /api/generate-kit ──────────────────────────────────
+// Accepts JSON body: { parseResult, jdText, type: "cover_letter" | "linkedin_summary", tone? }
+// Returns: { content: string, type, keyMatchesHighlighted: string[], wordCount: number }
+fastify.post("/api/generate-kit", async (request, reply) => {
+    const startTime = Date.now();
+    const rateLimitResetAt = consumeRateLimit(kitCallsPerIp, request.ip ?? "unknown", KIT_LIMIT);
+    if (rateLimitResetAt) {
+        return reply.status(429).send({
+            error: "rate_limited",
+            message: `Free application kit limit reached (${KIT_LIMIT}/hour). Try again later.`,
+            resetAt: rateLimitResetAt,
+        });
+    }
+    try {
+        const validation = generateKitSchema.safeParse(request.body);
+        if (!validation.success) {
+            return reply.status(400).send({
+                error: "invalid_kit_request",
+                message: validation.error.issues[0]?.message || "Invalid application kit request.",
+            });
+        }
+        const { parseResult, jdText, type, tone } = validation.data;
+        const resumeText = parseResult.bestEffortText || parseResult.readingOrderText || "";
+        const candidateName = parseResult.entities?.name?.value || "Candidate";
+        const skills = parseResult.entities?.skills || [];
+        const kitResult = await (0, application_kit_1.generateApplicationKit)({
+            candidateName,
+            resumeText,
+            skills,
+            jdText,
+            type,
+            tone,
+        });
+        fastify.log.info({ event: "generate_kit.completed", requestId: request.id, type, durationMs: Date.now() - startTime }, "Generate kit completed");
+        return reply.status(200).send(kitResult);
+    }
+    catch (err) {
+        fastify.log.error({ event: "generate_kit.failed", requestId: request.id, durationMs: Date.now() - startTime }, "Generate kit failed");
+        return reply.status(500).send({
+            error: "kit_generation_error",
+            message: "Unable to generate application kit right now. Please try again.",
         });
     }
 });

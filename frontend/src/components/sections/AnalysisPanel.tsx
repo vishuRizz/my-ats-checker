@@ -6,9 +6,10 @@ import { ScoreRing } from "@/components/ui/ScoreRing";
 import { ExportButton } from "@/components/ui/ExportButton";
 import { RulesPanel } from "./RulesPanel";
 import { ParseReport } from "./ParseReport";
-import { KeywordReport } from "./KeywordReport";
+import { SkillGapPanel } from "./SkillGapPanel";
 import { ScorePanel } from "./ScorePanel";
 import { SuggestionsPanel } from "./SuggestionsPanel";
+import { ApplicationKitPanel } from "./ApplicationKitPanel";
 
 interface AnalysisPanelProps {
   data: AnalysisResponse;
@@ -18,16 +19,34 @@ interface AnalysisPanelProps {
   onReset: () => void;
 }
 
-type Tab = "parse" | "rules" | "score" | "keywords" | "suggest";
+type Tab = "parse" | "rules" | "score" | "keywords" | "suggest" | "kit";
 
 export function AnalysisPanel({ data, filename, resumeFile, jdText, onReset }: AnalysisPanelProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("parse");
+  const [activeTab, setActiveTab] = useState<Tab>("score");
 
   const { parseResult, rules, keywordReport, scoreBreakdown, meta } = data;
   const criticalCount = rules.filter((r) => r.severity === "critical").length;
   const warningCount = rules.filter((r) => r.severity === "warning").length;
 
   const tabs: { id: Tab; label: string; badge?: string; badgeColor?: string }[] = [
+    { id: "score", label: "📊 Score Breakdown & Simulator" },
+    ...(keywordReport
+      ? [
+          {
+            id: "keywords" as Tab,
+            label: "🎯 Skill Gap & JD Match",
+            badge: `${keywordReport.matchRate}%`,
+            badgeColor:
+              keywordReport.matchRate >= 70
+                ? "var(--green)"
+                : keywordReport.matchRate >= 40
+                ? "var(--amber)"
+                : "var(--red)",
+          },
+          { id: "suggest" as Tab, label: "✨ AI Bullet Rewrites" },
+          { id: "kit" as Tab, label: "📝 Application Kit" },
+        ]
+      : []),
     { id: "parse", label: "📋 Parse Report" },
     {
       id: "rules",
@@ -35,31 +54,22 @@ export function AnalysisPanel({ data, filename, resumeFile, jdText, onReset }: A
       badge: `${rules.length}`,
       badgeColor: criticalCount > 0 ? "var(--red)" : warningCount > 0 ? "var(--amber)" : "var(--green)",
     },
-    { id: "score", label: "📊 Score Breakdown" },
-    ...(keywordReport
-      ? [{
-        id: "keywords" as Tab,
-        label: "🎯 Keyword Match",
-        badge: `${keywordReport.matchRate}%`,
-        badgeColor: keywordReport.matchRate >= 70 ? "var(--green)" : keywordReport.matchRate >= 40 ? "var(--amber)" : "var(--red)",
-      },
-      { id: "suggest" as Tab, label: "✨ AI Rewrites" }]
-      : []),
   ];
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 80px", animation: "fadeIn 0.4s ease-out" }}>
-
       {/* ─── Summary Header ─────────────────────────────────────── */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "auto 1fr",
-        gap: 24,
-        alignItems: "center",
-        padding: "32px 0 24px",
-        borderBottom: "1px solid var(--border)",
-        marginBottom: 24,
-      }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "auto 1fr",
+          gap: 24,
+          alignItems: "center",
+          padding: "32px 0 24px",
+          borderBottom: "1px solid var(--border)",
+          marginBottom: 24,
+        }}
+      >
         {/* Score Ring */}
         <ScoreRing score={scoreBreakdown.overall} size={100} />
 
@@ -69,18 +79,24 @@ export function AnalysisPanel({ data, filename, resumeFile, jdText, onReset }: A
             <h1 style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
               {filename}
             </h1>
-            <span style={{
-              fontSize: "0.75rem", padding: "3px 10px",
-              borderRadius: 99, background: "var(--bg-elevated)",
-              border: "1px solid var(--border)", color: "var(--text-muted)",
-              fontFamily: "var(--font-mono)",
-            }}>
+            <span
+              style={{
+                fontSize: "0.75rem",
+                padding: "3px 10px",
+                borderRadius: 99,
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--border)",
+                color: "var(--text-muted)",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
               {parseResult.fileType.toUpperCase()} · {parseResult.pageCount}p
             </span>
           </div>
 
           <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: 16 }}>
-            {scoreBreakdown.estimatedLabel} · Analyzed in {(meta.totalTimeMs / 1000).toFixed(1)}s · {parseResult.sections.length} sections detected
+            {scoreBreakdown.estimatedLabel} · Analyzed in {(meta.totalTimeMs / 1000).toFixed(1)}s ·{" "}
+            {parseResult.sections.length} sections detected
           </p>
 
           {/* Quick stats */}
@@ -96,46 +112,73 @@ export function AnalysisPanel({ data, filename, resumeFile, jdText, onReset }: A
                 color: warningCount > 0 ? "var(--amber)" : "var(--green)",
                 bg: warningCount > 0 ? "var(--amber-dim)" : "var(--green-dim)",
               },
-              parseResult.isMultiColumn && { label: "Multi-column", color: "var(--amber)", bg: "var(--amber-dim)" },
-              parseResult.isImageOnly && { label: "Image-only PDF", color: "var(--red)", bg: "var(--red-dim)" },
-              keywordReport && {
-                label: `${keywordReport.matchRate}% keyword match`,
-                color: keywordReport.matchRate >= 70 ? "var(--green)" : keywordReport.matchRate >= 40 ? "var(--amber)" : "var(--red)",
-                bg: keywordReport.matchRate >= 70 ? "var(--green-dim)" : keywordReport.matchRate >= 40 ? "var(--amber-dim)" : "var(--red-dim)",
+              parseResult.isMultiColumn && {
+                label: "Multi-column layout",
+                color: "var(--amber)",
+                bg: "var(--amber-dim)",
               },
-            ].filter((stat): stat is { label: string; color: string; bg: string } => Boolean(stat)).map((stat, i) => (
-              <span key={i} style={{
-                padding: "4px 12px", borderRadius: 99,
-                background: stat.bg, color: stat.color,
-                fontSize: "0.8rem", fontWeight: 600,
-                border: `1px solid ${stat.color}33`,
-              }}>
-                {stat.label}
-              </span>
-            ))}
+              parseResult.isImageOnly && {
+                label: "Image-only PDF (No text)",
+                color: "var(--red)",
+                bg: "var(--red-dim)",
+              },
+              keywordReport && {
+                label: `${keywordReport.matchRate}% JD match`,
+                color:
+                  keywordReport.matchRate >= 70
+                    ? "var(--green)"
+                    : keywordReport.matchRate >= 40
+                    ? "var(--amber)"
+                    : "var(--red)",
+                bg:
+                  keywordReport.matchRate >= 70
+                    ? "var(--green-dim)"
+                    : keywordReport.matchRate >= 40
+                    ? "var(--amber-dim)"
+                    : "var(--red-dim)",
+              },
+            ]
+              .filter((stat): stat is { label: string; color: string; bg: string } => Boolean(stat))
+              .map((stat, i) => (
+                <span
+                  key={i}
+                  style={{
+                    padding: "4px 12px",
+                    borderRadius: 99,
+                    background: stat.bg,
+                    color: stat.color,
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    border: `1px solid ${stat.color}33`,
+                  }}
+                >
+                  {stat.label}
+                </span>
+              ))}
           </div>
         </div>
 
         {/* Action buttons (top right) */}
         <div style={{ gridColumn: "span 2", justifySelf: "end", alignSelf: "start", display: "flex", gap: 10 }}>
           <ExportButton data={data} filename={filename} />
-          <button
-            className="btn-secondary"
-            onClick={onReset}
-            id="new-scan-button"
-          >
+          <button className="btn-secondary" onClick={onReset} id="new-scan-button">
             ← New Scan
           </button>
         </div>
       </div>
 
       {/* ─── Tabs ────────────────────────────────────────────────── */}
-      <div style={{
-        display: "flex", gap: 6, overflowX: "auto",
-        paddingBottom: 4, marginBottom: 24,
-        borderBottom: "1px solid var(--border)",
-        scrollbarWidth: "none",
-      }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 6,
+          overflowX: "auto",
+          paddingBottom: 4,
+          marginBottom: 24,
+          borderBottom: "1px solid var(--border)",
+          scrollbarWidth: "none",
+        }}
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -146,12 +189,16 @@ export function AnalysisPanel({ data, filename, resumeFile, jdText, onReset }: A
           >
             {tab.label}
             {tab.badge && (
-              <span style={{
-                fontSize: "0.72rem", padding: "2px 7px",
-                borderRadius: 99, fontWeight: 700,
-                background: activeTab === tab.id ? "rgba(255,255,255,0.2)" : `${tab.badgeColor}22`,
-                color: activeTab === tab.id ? "white" : tab.badgeColor,
-              }}>
+              <span
+                style={{
+                  fontSize: "0.72rem",
+                  padding: "2px 7px",
+                  borderRadius: 99,
+                  fontWeight: 700,
+                  background: activeTab === tab.id ? "rgba(255,255,255,0.2)" : `${tab.badgeColor}22`,
+                  color: activeTab === tab.id ? "white" : tab.badgeColor,
+                }}
+              >
                 {tab.badge}
               </span>
             )}
@@ -161,11 +208,12 @@ export function AnalysisPanel({ data, filename, resumeFile, jdText, onReset }: A
 
       {/* ─── Tab Content ─────────────────────────────────────────── */}
       <div style={{ animation: "fadeIn 0.3s ease-out" }} key={activeTab}>
+        {activeTab === "score" && <ScorePanel scoreBreakdown={scoreBreakdown} />}
+        {activeTab === "keywords" && keywordReport && <SkillGapPanel report={keywordReport} />}
+        {activeTab === "suggest" && <SuggestionsPanel data={data} jdText={jdText} />}
+        {activeTab === "kit" && <ApplicationKitPanel data={data} jdText={jdText} />}
         {activeTab === "parse" && <ParseReport parseResult={parseResult} resumeFile={resumeFile} />}
         {activeTab === "rules" && <RulesPanel rules={rules} />}
-        {activeTab === "score" && <ScorePanel scoreBreakdown={scoreBreakdown} />}
-        {activeTab === "keywords" && keywordReport && <KeywordReport report={keywordReport} />}
-        {activeTab === "suggest" && <SuggestionsPanel data={data} jdText={jdText} />}
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import multipart from "@fastify/multipart";
 import { parse, analyze } from "./engine/index";
 import { extractBullets } from "./engine/bullet-extractor";
 import { rewriteBullets } from "./llm/bullet-rewriter";
+import { generateApplicationKit } from "./llm/application-kit";
 import { extractJDRequirements } from "./engine/keyword-matcher";
 import { db } from "./db/client";
 import { resumes, analyses } from "./db/schema";
@@ -20,6 +21,7 @@ const ALLOWED_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:3000";
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const ANALYZE_LIMIT = parseInt(process.env.ANALYZE_LIMIT_PER_HOUR || "10", 10);
 const SUGGEST_LIMIT = parseInt(process.env.SUGGEST_LIMIT_PER_HOUR || "5", 10);
+const KIT_LIMIT = parseInt(process.env.KIT_LIMIT_PER_HOUR || "5", 10);
 const MAX_JOB_DESCRIPTION_CHARACTERS = 20_000;
 
 const suggestRequestSchema = z.object({
@@ -31,6 +33,24 @@ const suggestRequestSchema = z.object({
     }).passthrough()).max(100),
   }).passthrough(),
   jdText: z.string().max(20_000).optional(),
+});
+
+const generateKitSchema = z.object({
+  parseResult: z.object({
+    bestEffortText: z.string().max(100_000).optional(),
+    readingOrderText: z.string().max(100_000).optional(),
+    sections: z.array(z.object({
+      name: z.string().min(1).max(100),
+      text: z.string().max(20_000),
+    }).passthrough()).max(100).optional(),
+    entities: z.object({
+      name: z.object({ value: z.string() }).optional(),
+      skills: z.array(z.string()).optional(),
+    }).passthrough().optional(),
+  }).passthrough(),
+  jdText: z.string().min(10, "Job description is required to tailor the application kit.").max(20_000),
+  type: z.enum(["cover_letter", "linkedin_summary"]),
+  tone: z.enum(["professional", "confident", "concise"]).optional(),
 });
 
 const fastify = Fastify({
@@ -50,6 +70,7 @@ interface RateLimitRecord {
 
 const analyzeCallsPerIp = new Map<string, RateLimitRecord>();
 const suggestCallsPerIp = new Map<string, RateLimitRecord>();
+const kitCallsPerIp = new Map<string, RateLimitRecord>();
 
 function consumeRateLimit(store: Map<string, RateLimitRecord>, ip: string, limit: number): number | null {
   const now = Date.now();
@@ -72,7 +93,7 @@ function consumeRateLimit(store: Map<string, RateLimitRecord>, ip: string, limit
 // ─── Plugins ─────────────────────────────────────────────────
 
 fastify.register(cors, {
-  origin: ALLOWED_ORIGIN === "*" ? true : [ALLOWED_ORIGIN, "http://localhost:3000"],
+  origin: true,
   methods: ["GET", "POST", "OPTIONS"],
 });
 
@@ -307,6 +328,59 @@ fastify.post("/api/suggest", async (request, reply) => {
     return reply.status(500).send({
       error: "suggest_error",
       message: "Unable to create suggestions right now. Please try again.",
+    });
+  }
+});
+
+// ─── POST /api/generate-kit ──────────────────────────────────
+// Accepts JSON body: { parseResult, jdText, type: "cover_letter" | "linkedin_summary", tone? }
+// Returns: { content: string, type, keyMatchesHighlighted: string[], wordCount: number }
+
+fastify.post("/api/generate-kit", async (request, reply) => {
+  const startTime = Date.now();
+  const rateLimitResetAt = consumeRateLimit(kitCallsPerIp, request.ip ?? "unknown", KIT_LIMIT);
+  if (rateLimitResetAt) {
+    return reply.status(429).send({
+      error: "rate_limited",
+      message: `Free application kit limit reached (${KIT_LIMIT}/hour). Try again later.`,
+      resetAt: rateLimitResetAt,
+    });
+  }
+
+  try {
+    const validation = generateKitSchema.safeParse(request.body);
+    if (!validation.success) {
+      return reply.status(400).send({
+        error: "invalid_kit_request",
+        message: validation.error.issues[0]?.message || "Invalid application kit request.",
+      });
+    }
+
+    const { parseResult, jdText, type, tone } = validation.data;
+    const resumeText = parseResult.bestEffortText || parseResult.readingOrderText || "";
+    const candidateName = parseResult.entities?.name?.value || "Candidate";
+    const skills = parseResult.entities?.skills || [];
+
+    const kitResult = await generateApplicationKit({
+      candidateName,
+      resumeText,
+      skills,
+      jdText,
+      type,
+      tone,
+    });
+
+    fastify.log.info(
+      { event: "generate_kit.completed", requestId: request.id, type, durationMs: Date.now() - startTime },
+      "Generate kit completed"
+    );
+
+    return reply.status(200).send(kitResult);
+  } catch (err: any) {
+    fastify.log.error({ event: "generate_kit.failed", requestId: request.id, durationMs: Date.now() - startTime }, "Generate kit failed");
+    return reply.status(500).send({
+      error: "kit_generation_error",
+      message: "Unable to generate application kit right now. Please try again.",
     });
   }
 });
