@@ -29,7 +29,9 @@
     "*://jobs.lever.co/*",
     "*://*.ashbyhq.com/*",
     "*://*.myworkdayjobs.com/*",
+    "http://localhost:3000/*",
     "http://localhost:3001/*",
+    "https://*.vercel.app/*",
     "https://*.railway.app/*"
   ],
   "background": {
@@ -50,6 +52,18 @@
       "js": [
         "content/scraper.js",
         "content/sidecar-ui.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "http://localhost:3000/*",
+        "http://localhost:3001/*",
+        "https://*.vercel.app/*",
+        "https://*.railway.app/*"
+      ],
+      "js": [
+        "content/web-bridge.js"
       ],
       "run_at": "document_idle"
     }

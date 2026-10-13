@@ -92,7 +92,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // Save API URL
-  saveApiBtn.addEventListener("save-api-btn", async () => {
+  saveApiBtn.addEventListener("click", async () => {
     const url = apiUrlInput.value.trim();
     if (url) {
       await chrome.storage.local.set({ apiUrl: url });

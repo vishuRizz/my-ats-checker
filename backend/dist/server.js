@@ -776,6 +776,124 @@ fastify.post("/api/extension/quick-tailor", async (request, reply) => {
         return reply.status(500).send({ error: "tailor_failed", message: "Failed to generate tailored bullets." });
     }
 });
+// ─── POST /api/extension/save-job ─────────────────────────────
+fastify.post("/api/extension/save-job", async (request, reply) => {
+    if (!client_1.db)
+        return reply.status(503).send({ error: "db_unavailable" });
+    const { clerkId, userEmail, company, jobTitle, jobUrl, platform, status = "wishlist", matchScore, notes, } = request.body;
+    if (!company || !jobTitle) {
+        return reply.status(400).send({ error: "missing_fields", message: "Company and jobTitle are required." });
+    }
+    try {
+        let dbUserId = null;
+        if (clerkId) {
+            const userRows = await client_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.clerkId, clerkId)).limit(1);
+            if (userRows.length > 0) {
+                dbUserId = userRows[0].id;
+            }
+            else {
+                const [newUser] = await client_1.db
+                    .insert(schema_1.users)
+                    .values({ clerkId, email: userEmail || null })
+                    .returning({ id: schema_1.users.id });
+                dbUserId = newUser.id;
+            }
+        }
+        else if (userEmail) {
+            const userRows = await client_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, userEmail)).limit(1);
+            if (userRows.length > 0) {
+                dbUserId = userRows[0].id;
+            }
+        }
+        const [saved] = await client_1.db
+            .insert(schema_1.jobApplications)
+            .values({
+            userId: dbUserId,
+            company,
+            jobTitle,
+            jobUrl: jobUrl || null,
+            platform: platform || "other",
+            status,
+            matchScore: matchScore || null,
+            notes: notes || null,
+            appliedAt: status === "applied" ? new Date() : null,
+        })
+            .returning();
+        return reply.status(200).send({ success: true, savedJob: saved });
+    }
+    catch (err) {
+        fastify.log.error({ err: err?.message }, "Failed to save job application");
+        return reply.status(500).send({ error: "save_failed", message: "Could not save job." });
+    }
+});
+// ─── GET /api/user/saved-jobs ─────────────────────────────────
+fastify.get("/api/user/saved-jobs", async (request, reply) => {
+    if (!client_1.db)
+        return reply.send({ jobs: [] });
+    const { clerkId, email } = request.query;
+    if (!clerkId && !email)
+        return reply.status(400).send({ error: "missing_clerk_id_or_email" });
+    try {
+        let userRows = [];
+        if (clerkId) {
+            userRows = await client_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.clerkId, clerkId)).limit(1);
+        }
+        else if (email) {
+            userRows = await client_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, email)).limit(1);
+        }
+        if (userRows.length === 0)
+            return reply.send({ jobs: [] });
+        const jobsList = await client_1.db
+            .select()
+            .from(schema_1.jobApplications)
+            .where((0, drizzle_orm_1.eq)(schema_1.jobApplications.userId, userRows[0].id))
+            .orderBy((0, drizzle_orm_1.desc)(schema_1.jobApplications.createdAt));
+        return reply.send({ jobs: jobsList });
+    }
+    catch (err) {
+        fastify.log.error({ err: err?.message }, "Failed to get saved jobs");
+        return reply.status(500).send({ error: "db_error", message: "Could not fetch saved jobs." });
+    }
+});
+// ─── PATCH /api/user/saved-jobs/:id ───────────────────────────
+fastify.patch("/api/user/saved-jobs/:id", async (request, reply) => {
+    if (!client_1.db)
+        return reply.status(503).send({ error: "db_unavailable" });
+    const { id } = request.params;
+    const { status, notes } = request.body;
+    try {
+        const updateData = { updatedAt: new Date() };
+        if (status) {
+            updateData.status = status;
+            if (status === "applied")
+                updateData.appliedAt = new Date();
+        }
+        if (notes !== undefined)
+            updateData.notes = notes;
+        const [updated] = await client_1.db
+            .update(schema_1.jobApplications)
+            .set(updateData)
+            .where((0, drizzle_orm_1.eq)(schema_1.jobApplications.id, id))
+            .returning();
+        return reply.send({ success: true, updatedJob: updated });
+    }
+    catch (err) {
+        return reply.status(500).send({ error: "update_failed", message: "Could not update job status." });
+    }
+});
+// ─── DELETE /api/user/saved-jobs/:id ──────────────────────────
+fastify.delete("/api/user/saved-jobs/:id", async (request, reply) => {
+    if (!client_1.db)
+        return reply.status(503).send({ error: "db_unavailable" });
+    const { id } = request.params;
+    try {
+        await client_1.db.delete(schema_1.jobApplications).where((0, drizzle_orm_1.eq)(schema_1.jobApplications.id, id));
+        return reply.send({ success: true });
+    }
+    catch (err) {
+        return reply.status(500).send({ error: "delete_failed", message: "Could not delete job." });
+    }
+});
 // ─── DELETE /api/scans/:id ────────────────────────────────────
 fastify.delete("/api/scans/:id", async (request, reply) => {
     if (!client_1.db)

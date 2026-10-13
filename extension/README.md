@@ -4,40 +4,62 @@ The **ATS Checker Chrome Extension** is an in-browser sidecar that analyzes job 
 
 ---
 
-## Features
-- **In-Page Floating Pill Badge**: Displays instant compatibility score (e.g. `82% Match · Strong Fit`) at the bottom-right of active job postings.
-- **Slide-Over Sidecar Drawer**: 
-  - Match Breakdown & Score Ring.
-  - **Matched Skills**: Confirmed keywords from your resume.
-  - **Missing Skills**: One-click copy for high-demand missing requirements.
-  - **ATS Vendor Quirks Alert**: Automatic detection and specific advice for Greenhouse, Lever, Workday, Ashby, Taleo, iCIMS.
-  - **1-Click AI Resume Tailoring**: Generates 2 tailored bullets matching the active JD responsibilities.
-- **Shadow DOM Isolation**: Renders inside a closed Shadow Root to prevent CSS conflicts with host job board stylesheets.
-- **Popup Menu**: Shows account sync status, active resume, and allows switching between multiple resumes.
+## 🚀 Key Features
+
+1. **0-Click Seamless Auth Pairing**:
+   - Simply sign in to the ATS Checker web platform (`localhost:3000` or production domain).
+   - The extension's web bridge automatically synchronizes your account and active resume without needing to copy-paste tokens or emails.
+
+2. **Draggable Floating Pill Badge**:
+   - Displays real-time ATS compatibility (e.g. `84% Strong Fit`) at your preferred spot on the screen.
+   - Smoothly drag and drop the pill anywhere on your screen — your preferred position is saved across tabs.
+
+3. **In-Page Keyword X-Ray Highlighting**:
+   - Toggle **👁️ X-Ray** in the drawer to highlight matching keywords in **emerald green** and missing required skills in **warm amber** directly inside the job board posting DOM.
+   - Non-destructive and reversible at any time.
+
+4. **1-Click Job Application Tracker (Synced to Neon DB)**:
+   - Save job postings with 1 click directly from the sidecar drawer into your database.
+   - Track application stages (`Wishlist`, `Applied`, `Interviewing`, `Offer`, `Rejected`).
+   - View, filter, and manage your full application pipeline on the ATS Checker web dashboard (`/profile`).
+
+5. **Sub-Second Rule Matching & 24h Caching**:
+   - Re-visiting previously analyzed job postings loads in **0ms** from local cache.
+   - Automatic vendor detection & quirks advice for **Greenhouse, Lever, Workday, Ashby, Taleo, and iCIMS**.
+
+6. **1-Click AI Resume Tailoring (Groq LLM)**:
+   - Generates 2 role-specific high-impact resume bullets tailored to the target JD's requirements with 1 click.
+   - One-click copy directly into your clipboard.
+
+7. **Shadow DOM Isolation**:
+   - Sidecar drawer and pill are rendered inside a closed Shadow Root to completely isolate styles from host page CSS.
+
+8. **Keyboard Shortcut**:
+   - Press **`Cmd + Shift + A`** (Mac) or **`Ctrl + Shift + A`** (Windows / Linux) to toggle the sidecar drawer instantly on any job tab.
 
 ---
 
-## How to Install & Test in Chrome (1-Minute Setup)
+## 🛠️ How to Install in Chrome (1-Minute Setup)
 
 1. Open Google Chrome and navigate to:
    ```
    chrome://extensions/
    ```
-2. Enable **Developer mode** toggle in the top-right corner.
+2. Toggle on **Developer mode** in the top-right corner.
 3. Click the **"Load unpacked"** button in the top-left corner.
 4. Select the `extension/` folder in this repository:
    ```
    /Users/vishupratap/Movies/ats-checker/extension
    ```
-5. The extension icon will now appear in your Chrome toolbar!
+5. The ATS Checker icon will now appear in your Chrome toolbar.
 
 ---
 
-## How to Use
+## 📖 How to Use
 
-1. **Sync Your Profile**:
-   - Click the extension icon in the Chrome toolbar.
-   - Enter your email address or Clerk User ID to sync your active resume from the database.
+1. **Sign In**:
+   - Open the web app at `http://localhost:3000` and sign in.
+   - The extension will automatically pair your account and load your active resume.
 2. **Browse Job Boards**:
    - Navigate to any job posting on:
      - LinkedIn (`linkedin.com/jobs/...`)
@@ -46,6 +68,9 @@ The **ATS Checker Chrome Extension** is an in-browser sidecar that analyzes job 
      - Lever (`jobs.lever.co/...`)
      - Ashby (`jobs.ashbyhq.com/...`)
      - Workday (`*.myworkdayjobs.com/...`)
-3. **Instant Analysis**:
-   - The floating badge at the bottom-right will automatically light up with your score.
-   - Click the badge to slide out the match drawer and generate tailored bullets!
+3. **Instant Analysis & Actions**:
+   - Look for the floating score badge on the screen or press `Cmd+Shift+A` (`Ctrl+Shift+A`).
+   - Click **Save Job** to log the posting into your pipeline.
+   - Toggle **👁️ X-Ray** to see which skills are present or missing in the job text.
+   - Click **✨ Generate 2 Tailored Bullets** for instant AI bullets ready for your application.
+   - View all your saved jobs and stats in the web app under `/profile`.

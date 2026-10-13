@@ -1,10 +1,9 @@
 // ============================================================
-// ATS Checker Extension - In-Page Sidecar UI (Shadow DOM)
-// Renders Floating Pill Badge and Slide-Over Drawer
+// ATS Checker Extension - In-Page Sidecar UI v2 (Shadow DOM)
+// Features: Draggable Pill, X-Ray In-Page Highlighting, Job Tracker, Keyboard Shortcuts
 // ============================================================
 
 (function () {
-  // Prevent duplicate mounts
   if (document.getElementById("ats-checker-extension-host")) return;
 
   const hostEl = document.createElement("div");
@@ -19,15 +18,75 @@
   styleLink.href = chrome.runtime.getURL("content/sidecar.css");
   shadow.appendChild(styleLink);
 
-  // ─── Floating Pill Badge ─────────────────────────────────────
+  // ─── Floating Pill Badge (Draggable) ──────────────────────────
   const pill = document.createElement("div");
   pill.className = "ats-pill-badge";
+  pill.id = "ats-draggable-pill";
   pill.innerHTML = `
     <div class="ats-pill-status-dot" id="ats-dot"></div>
     <span class="ats-pill-score" id="ats-pill-score">--</span>
     <span class="ats-pill-label" id="ats-pill-label">ATS Match</span>
   `;
   shadow.appendChild(pill);
+
+  // Restore saved pill position
+  const savedPos = localStorage.getItem("ats_pill_pos");
+  if (savedPos) {
+    try {
+      const pos = JSON.parse(savedPos);
+      if (pos.bottom !== undefined) pill.style.bottom = `${pos.bottom}px`;
+      if (pos.right !== undefined) pill.style.right = `${pos.right}px`;
+      if (pos.top !== undefined) pill.style.top = `${pos.top}px`;
+      if (pos.left !== undefined) pill.style.left = `${pos.left}px`;
+    } catch {
+      // ignore
+    }
+  }
+
+  // Draggable logic
+  let isDragging = false;
+  let dragMoved = false;
+  let startX = 0;
+  let startY = 0;
+  let initLeft = 0;
+  let initTop = 0;
+
+  pill.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    dragMoved = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    const rect = pill.getBoundingClientRect();
+    initLeft = rect.left;
+    initTop = rect.top;
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      dragMoved = true;
+      pill.style.left = `${initLeft + dx}px`;
+      pill.style.top = `${initTop + dy}px`;
+      pill.style.right = "auto";
+      pill.style.bottom = "auto";
+    }
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (isDragging) {
+      isDragging = false;
+      if (dragMoved) {
+        const rect = pill.getBoundingClientRect();
+        localStorage.setItem(
+          "ats_pill_pos",
+          JSON.stringify({ left: Math.round(rect.left), top: Math.round(rect.top) })
+        );
+      }
+    }
+  });
 
   // ─── Slide-Over Drawer ───────────────────────────────────────
   const drawer = document.createElement("div");
@@ -42,7 +101,12 @@
           <span id="ats-vendor-badge" style="color: #818cf8; font-weight: 700;">Scanning</span>
         </div>
       </div>
-      <button class="ats-close-btn" id="ats-close">✕</button>
+      <div class="ats-header-actions">
+        <button class="ats-xray-toggle-btn" id="ats-xray-toggle" title="Highlight keywords directly on job page">
+          👁️ X-Ray
+        </button>
+        <button class="ats-close-btn" id="ats-close">✕</button>
+      </div>
     </div>
 
     <div class="ats-drawer-body">
@@ -55,6 +119,19 @@
         <span class="ats-score-badge" id="ats-tier-badge" style="background: rgba(99,102,241,0.2); color: #818cf8;">
           Ready
         </span>
+      </div>
+
+      <!-- Job Tracker Bar -->
+      <div class="ats-tracker-bar">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 0.8rem;">📌</span>
+          <select class="ats-status-select" id="ats-job-status-select">
+            <option value="wishlist">Wishlist</option>
+            <option value="applied">Applied</option>
+            <option value="interview">Interviewing</option>
+          </select>
+        </div>
+        <button class="ats-save-job-btn" id="ats-save-job-btn">Save Job</button>
       </div>
 
       <!-- Vendor Tip Box -->
@@ -93,13 +170,17 @@
       <a class="ats-web-btn" id="ats-web-link" href="http://localhost:3000/ats" target="_blank">
         Launch Full ATS Report in Web App →
       </a>
+      <span class="ats-shortcut-hint">Shortcut: Cmd + Shift + A (Mac) / Ctrl + Shift + A</span>
     </div>
   `;
   shadow.appendChild(drawer);
 
-  // ─── Event Listeners ─────────────────────────────────────────
+  // ─── State Management ────────────────────────────────────────
   let isDrawerOpen = false;
   let currentJobData = null;
+  let currentAnalysis = null;
+  let isXrayActive = false;
+  let originalJdHTML = null;
 
   const toggleDrawer = (open) => {
     isDrawerOpen = typeof open === "boolean" ? open : !isDrawerOpen;
@@ -107,12 +188,44 @@
     else drawer.classList.remove("open");
   };
 
-  pill.addEventListener("click", () => toggleDrawer());
+  pill.addEventListener("click", () => {
+    if (!dragMoved) toggleDrawer();
+  });
+
   drawer.querySelector("#ats-close").addEventListener("click", () => toggleDrawer(false));
 
-  // ─── Scraper Integration ─────────────────────────────────────
+  // Keyboard shortcut: Cmd+Shift+A / Ctrl+Shift+A
+  window.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === "KeyA") {
+      e.preventDefault();
+      toggleDrawer();
+    }
+  });
+
+  // Listen for manual trigger scans from popup or keyboard
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "TRIGGER_SCAN") {
+      if (window.ATS_SCRAPER) {
+        const freshJob = window.ATS_SCRAPER.extractJobData();
+        if (freshJob && freshJob.jdText) {
+          revertXrayHighlight();
+          currentJobData = freshJob;
+          analyzeActiveJob(freshJob);
+          toggleDrawer(true);
+          sendResponse({ success: true });
+          return true;
+        }
+      }
+      sendResponse({ success: false, reason: "No job description found on tab." });
+      return true;
+    }
+  });
+
+  // ─── Scraper Hook ────────────────────────────────────────────
   if (window.ATS_SCRAPER) {
     window.ATS_SCRAPER.onJobChange((jobData) => {
+      // Revert previous X-ray if active on job switch
+      revertXrayHighlight();
       currentJobData = jobData;
       analyzeActiveJob(jobData);
     });
@@ -145,8 +258,8 @@
           return;
         }
 
-        const data = response.data;
-        renderAnalysis(data, jobData);
+        currentAnalysis = response.data;
+        renderAnalysis(currentAnalysis, jobData);
       }
     );
   }
@@ -201,7 +314,6 @@
         )
         .join("");
 
-      // Allow 1-click copy for missing skills
       missingWrap.querySelectorAll(".ats-chip-missing").forEach((chip) => {
         chip.addEventListener("click", () => {
           const skill = chip.getAttribute("data-skill");
@@ -214,6 +326,108 @@
       missingWrap.innerHTML = '<span style="font-size: 0.75rem; color: #10b981;">✓ All key skills satisfied!</span>';
     }
   }
+
+  // ─── In-Page Keyword X-Ray Highlighting ──────────────────────
+  const xrayBtn = shadow.querySelector("#ats-xray-toggle");
+
+  xrayBtn.addEventListener("click", () => {
+    isXrayActive = !isXrayActive;
+    if (isXrayActive) {
+      xrayBtn.classList.add("active");
+      xrayBtn.innerText = "👁️ X-Ray: ON";
+      applyXrayHighlight();
+    } else {
+      xrayBtn.classList.remove("active");
+      xrayBtn.innerText = "👁️ X-Ray";
+      revertXrayHighlight();
+    }
+  });
+
+  function applyXrayHighlight() {
+    if (!currentJobData?.jdElement || !currentAnalysis) return;
+    const el = currentJobData.jdElement;
+
+    if (!originalJdHTML) {
+      originalJdHTML = el.innerHTML;
+    }
+
+    let html = originalJdHTML;
+    const matched = currentAnalysis.matchedKeywords || [];
+    const missing = currentAnalysis.missingKeywords || [];
+
+    // Highlight matched in green
+    matched.forEach((k) => {
+      const reg = new RegExp(`\\b(${escapeRegex(k.keyword)})\\b`, "gi");
+      html = html.replace(
+        reg,
+        `<mark style="background: rgba(16, 185, 129, 0.28); color: #047857; font-weight: bold; border-radius: 4px; padding: 1px 4px;">$1</mark>`
+      );
+    });
+
+    // Highlight missing in yellow/amber
+    missing.forEach((k) => {
+      const reg = new RegExp(`\\b(${escapeRegex(k.keyword)})\\b`, "gi");
+      html = html.replace(
+        reg,
+        `<mark style="background: rgba(245, 158, 11, 0.28); color: #b45309; font-weight: bold; border-radius: 4px; padding: 1px 4px;">$1</mark>`
+      );
+    });
+
+    el.innerHTML = html;
+  }
+
+  function revertXrayHighlight() {
+    if (originalJdHTML && currentJobData?.jdElement) {
+      currentJobData.jdElement.innerHTML = originalJdHTML;
+      originalJdHTML = null;
+    }
+    isXrayActive = false;
+    xrayBtn.classList.remove("active");
+    xrayBtn.innerText = "👁️ X-Ray";
+  }
+
+  function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  // ─── 1-Click Save Job Tracker ────────────────────────────────
+  const saveJobBtn = shadow.querySelector("#ats-save-job-btn");
+  const statusSelect = shadow.querySelector("#ats-job-status-select");
+
+  saveJobBtn.addEventListener("click", () => {
+    if (!currentJobData) return;
+
+    saveJobBtn.innerText = "Saving...";
+    saveJobBtn.disabled = true;
+
+    chrome.runtime.sendMessage(
+      {
+        action: "SAVE_JOB",
+        payload: {
+          company: currentJobData.company,
+          jobTitle: currentJobData.title,
+          jobUrl: currentJobData.jobUrl,
+          platform: currentJobData.platform,
+          status: statusSelect.value,
+          matchScore: currentAnalysis?.overallScore || null,
+        },
+      },
+      (res) => {
+        saveJobBtn.disabled = false;
+        if (res && res.success) {
+          saveJobBtn.innerText = "✓ Saved!";
+          saveJobBtn.style.background = "#10b981";
+          setTimeout(() => {
+            saveJobBtn.innerText = "Save Job";
+            saveJobBtn.style.background = "#3b82f6";
+          }, 2500);
+        } else {
+          saveJobBtn.innerText = "Error";
+          setTimeout(() => (saveJobBtn.innerText = "Save Job"), 1500);
+        }
+      }
+    );
+  });
 
   // ─── AI Tailor Button ────────────────────────────────────────
   const tailorBtn = shadow.querySelector("#ats-tailor-btn");

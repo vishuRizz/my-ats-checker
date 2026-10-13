@@ -1,9 +1,10 @@
 // ============================================================
-// ATS Checker Extension - Background Service Worker (Manifest V3)
-// Handles API communication, storage sync, and badge updates
+// ATS Checker Extension - Background Service Worker v2 (Manifest V3)
+// Handles API communication, storage sync, job caching & tracker
 // ============================================================
 
 const DEFAULT_API_URL = "http://localhost:3001";
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Initialize default settings on install
 chrome.runtime.onInstalled.addListener(async () => {
@@ -19,21 +20,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "MATCH_JOB") {
     handleMatchJob(request.payload)
       .then((res) => {
-        // Update badge with score if available
         if (sender.tab?.id && res?.overallScore) {
           const score = res.overallScore;
           chrome.action.setBadgeText({ tabId: sender.tab.id, text: `${score}` });
-          const color = score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#ef4444";
+          const color = score >= 78 ? "#10b981" : score >= 55 ? "#f59e0b" : "#ef4444";
           chrome.action.setBadgeBackgroundColor({ tabId: sender.tab.id, color });
         }
         sendResponse({ success: true, data: res });
       })
       .catch((err) => sendResponse({ success: false, error: err.message }));
-    return true; // Keep channel open for async response
+    return true;
   }
 
   if (request.action === "QUICK_TAILOR") {
     handleQuickTailor(request.payload)
+      .then((res) => sendResponse({ success: true, data: res }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (request.action === "SAVE_JOB") {
+    handleSaveJob(request.payload)
       .then((res) => sendResponse({ success: true, data: res }))
       .catch((err) => sendResponse({ success: false, error: err.message }));
     return true;
@@ -62,7 +69,22 @@ async function getApiUrl() {
   return url;
 }
 
+// Normalized URL cache key helper
+function getCacheKey(url) {
+  if (!url) return null;
+  return `match_cache_${url.split("?")[0]}`;
+}
+
 async function handleMatchJob(payload) {
+  // Check local 24h cache first
+  const cacheKey = getCacheKey(payload.jobUrl);
+  if (cacheKey && !payload.forceRefresh) {
+    const cached = await chrome.storage.local.get(cacheKey);
+    if (cached[cacheKey] && Date.now() - cached[cacheKey].timestamp < CACHE_TTL_MS) {
+      return cached[cacheKey].data;
+    }
+  }
+
   const apiUrl = await getApiUrl();
   const { clerkId, activeResume } = await chrome.storage.local.get(["clerkId", "activeResume"]);
 
@@ -87,7 +109,16 @@ async function handleMatchJob(payload) {
     throw new Error(err.message || "Failed to analyze job match.");
   }
 
-  return await res.json();
+  const result = await res.json();
+
+  // Save to cache
+  if (cacheKey) {
+    await chrome.storage.local.set({
+      [cacheKey]: { data: result, timestamp: Date.now() },
+    });
+  }
+
+  return result;
 }
 
 async function handleQuickTailor(payload) {
@@ -111,6 +142,36 @@ async function handleQuickTailor(payload) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || "Failed to generate tailored bullets.");
+  }
+
+  return await res.json();
+}
+
+async function handleSaveJob(payload) {
+  const apiUrl = await getApiUrl();
+  const { clerkId, userEmail } = await chrome.storage.local.get(["clerkId", "userEmail"]);
+
+  const body = {
+    clerkId: clerkId || undefined,
+    userEmail: userEmail || undefined,
+    company: payload.company,
+    jobTitle: payload.jobTitle,
+    jobUrl: payload.jobUrl,
+    platform: payload.platform || "other",
+    status: payload.status || "wishlist",
+    matchScore: payload.matchScore,
+    notes: payload.notes,
+  };
+
+  const res = await fetch(`${apiUrl}/api/extension/save-job`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to save job application.");
   }
 
   return await res.json();

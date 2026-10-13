@@ -1,6 +1,6 @@
 // ============================================================
-// ATS Checker Extension - Content Script Scraper
-// Resilient DOM Extraction for LinkedIn, Indeed, Greenhouse, Lever, Ashby, Workday
+// ATS Checker Extension - Content Script Scraper v2
+// Resilient DOM Extraction + LinkedIn Auto-Expand + Clean Text + X-Ray DOM target
 // ============================================================
 
 (function () {
@@ -23,6 +23,12 @@
         ".jobs-box__html-content",
         ".show-more-less-html__markup",
       ],
+      expandBtn: [
+        ".show-more-less-html__button--more",
+        ".jobs-description__footer-button",
+        "button[aria-label*='Show more']",
+        ".artdeco-card button",
+      ],
     },
     indeed: {
       title: [
@@ -38,26 +44,31 @@
         "#jobDescriptionText",
         ".jobsearch-jobDescriptionText",
       ],
+      expandBtn: [],
     },
     greenhouse: {
       title: [".app-title", "#header h1", "h1.heading"],
       company: [".company-name", "#header .company"],
       jd: ["#content", "#main", ".job-description"],
+      expandBtn: [],
     },
     lever: {
       title: [".posting-headline h2", "h2"],
       company: [".main-header-logo img", ".posting-headline .company"],
       jd: [".posting-page", ".content", ".section-wrapper"],
+      expandBtn: [],
     },
     ashby: {
       title: ["h1", "._title_"],
       company: ["header a", "._company_"],
       jd: ["[data-qa='job-description']", "._description_", ".ashby-job-posting-description"],
+      expandBtn: [],
     },
     workday: {
       title: ["[data-automation-id='jobPostingHeader']", "h1"],
       company: ["[data-automation-id='companyName']", "h2"],
       jd: ["[data-automation-id='jobPostingDescription']", ".job-description"],
+      expandBtn: [],
     },
   };
 
@@ -85,25 +96,57 @@
     return "generic";
   }
 
+  // Auto-expand LinkedIn "Show More" buttons
+  function autoExpandCollapsedText(platform) {
+    if (platform === "linkedin") {
+      for (const sel of SELECTORS.linkedin.expandBtn) {
+        try {
+          const btn = document.querySelector(sel);
+          if (btn && btn.offsetParent !== null && !btn.dataset.atsAutoExpanded) {
+            btn.dataset.atsAutoExpanded = "true";
+            btn.click();
+            break;
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+
+  function cleanJobText(raw) {
+    return raw
+      .replace(/\bShow less\b/gi, "")
+      .replace(/\bReport this job\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   function extractGeneric() {
-    // Fallback: look for largest text container with paragraphs and lists
     const candidates = document.querySelectorAll("article, main, .content, .description, body");
     let bestText = "";
+    let bestEl = null;
+
     for (const el of candidates) {
       const text = el.innerText || "";
       if (text.length > bestText.length && text.length < 25000) {
         bestText = text;
+        bestEl = el;
       }
     }
+
     return {
       title: document.title.split(/[-|–]/)[0]?.trim() || "Job Opportunity",
       company: window.location.hostname.replace(/^www\./, "").split(".")[0],
-      jdText: bestText.trim(),
+      jdText: cleanJobText(bestText),
+      jdElement: bestEl,
     };
   }
 
   function extractJobData() {
     const platform = getPlatform();
+    autoExpandCollapsedText(platform);
+
     const config = SELECTORS[platform];
 
     if (!config) {
@@ -123,7 +166,7 @@
     const company = companyEl
       ? companyEl.getAttribute("alt") || companyEl.innerText.trim()
       : "Company";
-    const jdText = jdEl ? jdEl.innerText.trim() : "";
+    const jdText = jdEl ? cleanJobText(jdEl.innerText) : "";
 
     return {
       platform,
@@ -131,6 +174,7 @@
       title,
       company,
       jdText,
+      jdElement: jdEl,
     };
   }
 
@@ -148,7 +192,7 @@
           lastExtractedJd = data.jdText;
           listeners.forEach((fn) => fn(data));
         }
-      }, 500);
+      }, 400);
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
@@ -159,7 +203,6 @@
     extractJobData,
     onJobChange: (callback) => {
       listeners.push(callback);
-      // Run once immediately
       const initial = extractJobData();
       if (initial.jdText && initial.jdText.length > 50) {
         lastExtractedJd = initial.jdText;

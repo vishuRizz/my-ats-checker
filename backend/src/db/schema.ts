@@ -125,3 +125,19 @@ export const scanVersions = pgTable("scan_versions", {
   scoreSnapshot: jsonb("score_snapshot"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ─── Job Applications (Tracker for Chrome Extension) ─────────
+export const jobApplications = pgTable("job_applications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+  company: varchar("company", { length: 255 }).notNull(),
+  jobTitle: varchar("job_title", { length: 255 }).notNull(),
+  jobUrl: varchar("job_url", { length: 2048 }),
+  platform: varchar("platform", { length: 50 }).default("other"),
+  status: varchar("status", { length: 50 }).default("wishlist").notNull(), // wishlist | applied | interview | offer | rejected
+  matchScore: integer("match_score"),
+  notes: text("notes"),
+  appliedAt: timestamp("applied_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
