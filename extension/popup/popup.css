@@ -1,0 +1,245 @@
+/* ============================================================
+   ATS Checker Extension - Toolbar Popup Styles
+   ============================================================ */
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #090d16;
+  color: #f1f5f9;
+  width: 320px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+.popup-container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Header */
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-icon {
+  width: 22px;
+  height: 22px;
+  background: white;
+  color: #090d16;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 11px;
+}
+
+.logo-text {
+  font-weight: 700;
+  font-size: 14px;
+  color: white;
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+/* Cards */
+.card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #131c2e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.status-indicator {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.status-indicator.connected {
+  color: #34d399;
+}
+
+.status-indicator.disconnected {
+  color: #fbbf24;
+}
+
+.user-email {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.sync-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.sync-form input {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 11px;
+  outline: none;
+}
+
+/* Resume Card */
+.score-pill {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.resume-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resume-skills {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.resume-select {
+  width: 100%;
+  padding: 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Settings */
+.settings-section {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.settings-section summary {
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 6px;
+}
+
+.settings-content {
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-content input {
+  padding: 5px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 11px;
+}
+
+/* Buttons */
+.btn-primary {
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: #6366f1;
+  color: white;
+  border: none;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.full-width {
+  width: 100%;
+  padding: 10px;
+}
+
+/* Footer */
+.popup-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.link-secondary {
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 11px;
+}
+
+.link-secondary:hover {
+  color: white;
+}

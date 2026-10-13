@@ -17,6 +17,7 @@ const application_kit_1 = require("./llm/application-kit");
 const keyword_matcher_1 = require("./engine/keyword-matcher");
 const recruiter_search_1 = require("./engine/recruiter-search");
 const linkedin_scanner_1 = require("./engine/linkedin-scanner");
+const extension_service_1 = require("./engine/extension-service");
 const client_1 = require("./db/client");
 const schema_1 = require("./db/schema");
 const drizzle_orm_1 = require("drizzle-orm");
@@ -591,6 +592,188 @@ fastify.post("/api/linkedin/scan", async (request, reply) => {
             error: "scan_failed",
             message: err?.message || "Failed to audit LinkedIn profile. Please try again.",
         });
+    }
+});
+// ─── GET /api/extension/sync ──────────────────────────────────
+fastify.get("/api/extension/sync", async (request, reply) => {
+    const { clerkId, email } = request.query;
+    if (!client_1.db) {
+        return reply.send({
+            authenticated: false,
+            user: null,
+            activeResume: null,
+            allResumes: [],
+            message: "Database unavailable in demo mode",
+        });
+    }
+    try {
+        let userRow = null;
+        if (clerkId) {
+            const usersFound = await client_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.clerkId, clerkId)).limit(1);
+            userRow = usersFound[0];
+        }
+        else if (email) {
+            const usersFound = await client_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, email)).limit(1);
+            userRow = usersFound[0];
+        }
+        if (!userRow) {
+            return reply.send({
+                authenticated: false,
+                user: null,
+                activeResume: null,
+                allResumes: [],
+                message: "User not found or not signed in yet",
+            });
+        }
+        const userResumes = await client_1.db
+            .select({
+            id: schema_1.resumes.id,
+            filename: schema_1.resumes.filename,
+            fileType: schema_1.resumes.fileType,
+            uploadedAt: schema_1.resumes.uploadedAt,
+            scoreBreakdown: schema_1.analyses.scoreBreakdown,
+            entities: schema_1.parseResults.entities,
+            sections: schema_1.parseResults.sections,
+        })
+            .from(schema_1.resumes)
+            .leftJoin(schema_1.analyses, (0, drizzle_orm_1.eq)(schema_1.analyses.resumeId, schema_1.resumes.id))
+            .leftJoin(schema_1.parseResults, (0, drizzle_orm_1.eq)(schema_1.parseResults.resumeId, schema_1.resumes.id))
+            .where((0, drizzle_orm_1.eq)(schema_1.resumes.userId, userRow.id))
+            .orderBy((0, drizzle_orm_1.desc)(schema_1.resumes.uploadedAt));
+        const active = userResumes[0] || null;
+        const activeScore = active?.scoreBreakdown?.overall ?? null;
+        const activeEntities = active?.entities;
+        const activeSkills = activeEntities?.skills || [];
+        return reply.send({
+            authenticated: true,
+            user: {
+                id: userRow.id,
+                email: userRow.email,
+                clerkId: userRow.clerkId,
+            },
+            activeResume: active
+                ? {
+                    id: active.id,
+                    filename: active.filename,
+                    fileType: active.fileType,
+                    uploadedAt: active.uploadedAt,
+                    overallScore: activeScore,
+                    skills: activeSkills.slice(0, 30),
+                }
+                : null,
+            allResumes: userResumes.map((r) => ({
+                id: r.id,
+                filename: r.filename,
+                fileType: r.fileType,
+                uploadedAt: r.uploadedAt,
+                overallScore: r.scoreBreakdown?.overall ?? 0,
+            })),
+        });
+    }
+    catch (err) {
+        fastify.log.error({ err: err?.message }, "Extension sync failed");
+        return reply.status(500).send({ error: "sync_failed", message: "Failed to sync profile" });
+    }
+});
+// ─── POST /api/extension/match ────────────────────────────────
+fastify.post("/api/extension/match", async (request, reply) => {
+    const { clerkId, resumeId, resumeText, jobTitle, company, jobUrl, jdText, } = request.body;
+    if (!jdText || jdText.trim().length < 20) {
+        return reply.status(400).send({
+            error: "invalid_jd",
+            message: "Job description is too short to evaluate requirements.",
+        });
+    }
+    try {
+        let parseResultData = null;
+        if (client_1.db && resumeId) {
+            const rows = await client_1.db.select().from(schema_1.parseResults).where((0, drizzle_orm_1.eq)(schema_1.parseResults.resumeId, resumeId)).limit(1);
+            if (rows[0])
+                parseResultData = rows[0];
+        }
+        else if (client_1.db && clerkId) {
+            const userRows = await client_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.clerkId, clerkId)).limit(1);
+            if (userRows[0]) {
+                const resumeRows = await client_1.db
+                    .select()
+                    .from(schema_1.resumes)
+                    .where((0, drizzle_orm_1.eq)(schema_1.resumes.userId, userRows[0].id))
+                    .orderBy((0, drizzle_orm_1.desc)(schema_1.resumes.uploadedAt))
+                    .limit(1);
+                if (resumeRows[0]) {
+                    const rows = await client_1.db.select().from(schema_1.parseResults).where((0, drizzle_orm_1.eq)(schema_1.parseResults.resumeId, resumeRows[0].id)).limit(1);
+                    if (rows[0])
+                        parseResultData = rows[0];
+                }
+            }
+        }
+        if (!parseResultData) {
+            const textToUse = resumeText || "Experienced Software Engineer with TypeScript, React, Node.js, REST APIs, Git, and Cloud Infrastructure.";
+            parseResultData = {
+                fileType: "pdf",
+                pageCount: 1,
+                readingOrderText: textToUse,
+                bestEffortText: textToUse,
+                sections: [{ name: "experience", rawHeading: "Experience", text: textToUse, startPage: 1, confidence: 1 }],
+                entities: {
+                    name: { value: "Candidate", confidence: 1 },
+                    email: { value: "", confidence: 1 },
+                    phone: { value: "", confidence: 1 },
+                    links: [],
+                    skills: ["TypeScript", "React", "Node.js", "Git", "REST API", "SQL"],
+                    experience: [],
+                    education: [],
+                },
+                lostRegions: [],
+                warnings: [],
+                isImageOnly: false,
+                isMultiColumn: false,
+                hasHeaderFooterContent: false,
+                parserVersion: "2.0.0",
+                parsabilityRisk: "low",
+                parsabilityReason: "Direct text evaluation",
+                textItemCount: 100,
+                textToPageRatio: 100,
+            };
+        }
+        const result = (0, extension_service_1.matchJobDescription)(parseResultData, jdText, jobUrl, jobTitle, company);
+        return reply.status(200).send(result);
+    }
+    catch (err) {
+        fastify.log.error({ err: err?.message }, "Extension match failed");
+        return reply.status(500).send({ error: "match_failed", message: "Failed to evaluate job match." });
+    }
+});
+// ─── POST /api/extension/quick-tailor ─────────────────────────
+fastify.post("/api/extension/quick-tailor", async (request, reply) => {
+    const { resumeId, resumeText, jdText, jobTitle } = request.body;
+    if (!jdText || jdText.trim().length < 20) {
+        return reply.status(400).send({ error: "missing_jd", message: "Job description is required." });
+    }
+    try {
+        let bullets = [];
+        if (client_1.db && resumeId) {
+            const rows = await client_1.db.select().from(schema_1.parseResults).where((0, drizzle_orm_1.eq)(schema_1.parseResults.resumeId, resumeId)).limit(1);
+            if (rows[0]?.entities) {
+                const ents = rows[0].entities;
+                bullets = ents.experience?.flatMap((e) => e.bullets || []) || [];
+            }
+        }
+        if (bullets.length === 0 && resumeText) {
+            bullets = resumeText.split("\n").filter((l) => l.trim().length > 20);
+        }
+        if (bullets.length === 0) {
+            bullets = [
+                "Architected scalable backend microservices reducing system latency by 35%.",
+                "Led cross-functional frontend migration delivering improved Core Web Vitals across web applications.",
+            ];
+        }
+        const tailored = await (0, extension_service_1.quickTailorBullets)(bullets, jdText, jobTitle);
+        return reply.status(200).send({ tailored });
+    }
+    catch (err) {
+        fastify.log.error({ err: err?.message }, "Quick tailor failed");
+        return reply.status(500).send({ error: "tailor_failed", message: "Failed to generate tailored bullets." });
     }
 });
 // ─── DELETE /api/scans/:id ────────────────────────────────────

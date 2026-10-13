@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ATS Checker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="logo-box">
+        <div class="logo-icon">✓</div>
+        <span class="logo-text">ATS Checker</span>
+      </div>
+      <span class="badge">Sidecar v1.0</span>
+    </header>
+
+    <!-- Connection & Account Card -->
+    <section class="card" id="account-card">
+      <div class="card-row">
+        <span class="card-label">Account Sync</span>
+        <span class="status-indicator" id="auth-status">Checking...</span>
+      </div>
+      <div id="account-info" class="account-info">
+        <span id="user-email" class="user-email">Not Synced</span>
+      </div>
+
+      <!-- Sync Form -->
+      <div class="sync-form" id="sync-form">
+        <input type="text" id="sync-input" placeholder="Enter email or Clerk ID..." />
+        <button id="sync-btn" class="btn-primary">Sync Profile</button>
+      </div>
+    </section>
+
+    <!-- Active Resume Card -->
+    <section class="card" id="resume-card">
+      <div class="card-row">
+        <span class="card-label">Active Resume</span>
+        <span class="score-pill" id="resume-score">--</span>
+      </div>
+      <div class="resume-title" id="resume-filename">No Resume Cached</div>
+      <div class="resume-skills" id="resume-skills">Upload a resume on the web app to activate real-time sidecar scoring.</div>
+
+      <!-- Resume Selector Dropdown -->
+      <select id="resume-select" class="resume-select" style="display: none;">
+        <option value="">Switch Resume...</option>
+      </select>
+    </section>
+
+    <!-- Settings (Backend URL) -->
+    <section class="settings-section">
+      <details>
+        <summary>⚙️ API Server Settings</summary>
+        <div class="settings-content">
+          <label for="api-url-input">Backend API URL:</label>
+          <input type="text" id="api-url-input" value="http://localhost:3001" />
+          <button id="save-api-btn" class="btn-secondary">Save URL</button>
+        </div>
+      </details>
+    </section>
+
+    <!-- Actions -->
+    <footer class="popup-footer">
+      <button id="manual-scan-btn" class="btn-primary full-width">
+        ⚡ Scan Current Tab
+      </button>
+      <a href="http://localhost:3000/ats" target="_blank" class="link-secondary">
+        Open Full Web App →
+      </a>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
