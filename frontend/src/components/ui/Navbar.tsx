@@ -20,10 +20,21 @@ export function Navbar({ onReset }: NavbarProps) {
         </Link>
 
         {/* Actions */}
-        <div className="flex items-center gap-4">
-          <span className="text-xs font-medium px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hidden sm:inline-block">
-            Public Beta
-          </span>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/linkedin"
+            className="text-xs font-semibold px-3 py-1.5 rounded-full bg-blue-950/40 border border-blue-800/50 text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1.5"
+          >
+            <span>⚡</span>
+            <span>LinkedIn Scanner</span>
+          </Link>
+
+          <Link
+            href="/ats"
+            className="text-xs font-medium px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white transition-colors hidden sm:inline-block"
+          >
+            Resume ATS
+          </Link>
 
           {onReset && (
             <button

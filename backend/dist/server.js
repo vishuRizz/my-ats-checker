@@ -15,6 +15,8 @@ const bullet_extractor_1 = require("./engine/bullet-extractor");
 const bullet_rewriter_1 = require("./llm/bullet-rewriter");
 const application_kit_1 = require("./llm/application-kit");
 const keyword_matcher_1 = require("./engine/keyword-matcher");
+const recruiter_search_1 = require("./engine/recruiter-search");
+const linkedin_scanner_1 = require("./engine/linkedin-scanner");
 const client_1 = require("./db/client");
 const schema_1 = require("./db/schema");
 const drizzle_orm_1 = require("drizzle-orm");
@@ -266,6 +268,7 @@ fastify.post("/api/analyze", async (request, reply) => {
                         jdId: jdRowId,
                         scoreBreakdown: analysisResult.scoreBreakdown,
                         keywordReport: analysisResult.keywordReport,
+                        vendorReports: analysisResult.vendorReports,
                         rules: analysisResult.rules,
                     });
                     fastify.log.info({ event: "analysis.persisted", resumeId: resumeRow.id, userId: dbUserId }, "Persisted scan to DB");
@@ -482,6 +485,7 @@ fastify.get("/api/scans/:id", async (request, reply) => {
             rules: analysisRows[0].rules || [],
             keywordReport: analysisRows[0].keywordReport || null,
             scoreBreakdown: analysisRows[0].scoreBreakdown,
+            vendorReports: analysisRows[0].vendorReports || [],
             engineVersion: "2.0.0",
             jdText,
             meta: {
@@ -495,6 +499,98 @@ fastify.get("/api/scans/:id", async (request, reply) => {
     catch (err) {
         fastify.log.error({ event: "get_scan_detail_failed", err: err?.message }, "Failed to get scan details");
         return reply.status(500).send({ error: "db_error", message: "Failed to load scan." });
+    }
+});
+// ─── POST /api/simulator/boolean-search ───────────────────────
+// Evaluates boolean queries (AND / OR / NOT / quotes) against resume text
+fastify.post("/api/simulator/boolean-search", async (request, reply) => {
+    const { query, resumeText } = request.body;
+    if (!query || typeof query !== "string") {
+        return reply.status(400).send({ error: "missing_query", message: "Search query is required." });
+    }
+    const result = (0, recruiter_search_1.evaluateRecruiterQuery)(query, resumeText || "");
+    return reply.send(result);
+});
+// ─── GET /api/linkedin/demos ──────────────────────────────────
+fastify.get("/api/linkedin/demos", async (_request, reply) => {
+    return reply.send({
+        demos: Object.entries(linkedin_scanner_1.DEMO_PROFILES).map(([id, p]) => ({
+            id,
+            name: p.name,
+            role: p.targetRole,
+            headline: p.headline,
+            company: p.currentCompany,
+        })),
+    });
+});
+// ─── POST /api/linkedin/scan ──────────────────────────────────
+fastify.post("/api/linkedin/scan", async (request, reply) => {
+    try {
+        let url;
+        let targetRole;
+        let profileText;
+        let demoId;
+        if (request.isMultipart()) {
+            let fileBuffer = null;
+            let filename = "linkedin_profile.pdf";
+            let mimeType = "application/pdf";
+            const parts = request.parts();
+            for await (const part of parts) {
+                if (part.type === "file") {
+                    filename = part.filename || "linkedin_profile.pdf";
+                    mimeType = part.mimetype;
+                    fileBuffer = await part.toBuffer();
+                }
+                else if (part.type === "field") {
+                    if (part.fieldname === "url")
+                        url = part.value;
+                    if (part.fieldname === "targetRole")
+                        targetRole = part.value;
+                    if (part.fieldname === "profileText")
+                        profileText = part.value;
+                    if (part.fieldname === "demoId")
+                        demoId = part.value;
+                }
+            }
+            if (fileBuffer) {
+                try {
+                    const parsed = await (0, index_1.parse)(fileBuffer, mimeType, filename);
+                    profileText = parsed.bestEffortText || parsed.readingOrderText;
+                }
+                catch (e) {
+                    fastify.log.warn({ err: e?.message }, "Failed to parse uploaded LinkedIn PDF");
+                }
+            }
+        }
+        else {
+            const body = request.body;
+            if (body) {
+                url = body.url;
+                targetRole = body.targetRole;
+                profileText = body.profileText;
+                demoId = body.demoId;
+            }
+        }
+        if (!url && !profileText && !demoId) {
+            return reply.status(400).send({
+                error: "missing_input",
+                message: "Please provide a LinkedIn URL, paste profile text, upload a PDF, or pick a demo.",
+            });
+        }
+        const auditResult = await (0, linkedin_scanner_1.auditLinkedInProfile)({
+            url,
+            targetRole,
+            profileText,
+            demoId,
+        });
+        return reply.status(200).send(auditResult);
+    }
+    catch (err) {
+        fastify.log.error({ err: err?.message }, "LinkedIn scan failed");
+        return reply.status(500).send({
+            error: "scan_failed",
+            message: err?.message || "Failed to audit LinkedIn profile. Please try again.",
+        });
     }
 });
 // ─── DELETE /api/scans/:id ────────────────────────────────────

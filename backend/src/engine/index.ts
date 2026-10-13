@@ -10,6 +10,7 @@ import { detectSections, extractEntities } from "./section-detector.js";
 import { runRules } from "./rule-engine.js";
 import { extractJDRequirements, matchKeywords } from "./keyword-matcher.js";
 import { computeScore } from "./scorer.js";
+import { evaluateVendorProfiles } from "./vendor-profiles.js";
 import type { ParseResult, AnalysisResponse, LostRegion } from "./types.js";
 
 const ENGINE_VERSION = "1.0.1-phase1";
@@ -225,12 +226,14 @@ export async function analyze(
   }
 
   const scoreBreakdown = computeScore(parseResult, rules, keywordReport);
+  const vendorReports = evaluateVendorProfiles(parseResult, rules, keywordReport);
 
   return {
     parseResult,
     rules,
     keywordReport,
     scoreBreakdown,
+    vendorReports,
     engineVersion: ENGINE_VERSION,
   };
 }

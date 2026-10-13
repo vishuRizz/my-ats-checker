@@ -3,7 +3,8 @@
 
 import { motion, useInView } from "framer-motion"
 import { useRef, useEffect, useState } from "react"
-import { Activity, Command, BarChart3, Zap, Shield } from "lucide-react"
+import { Activity, Command, BarChart3, Zap, Shield, Sparkles } from "lucide-react"
+import Link from "next/link"
 
 const containerVariants = {
   hidden: {},
@@ -237,6 +238,31 @@ export function BentoGrid() {
               <span className="px-2 py-1 text-xs bg-zinc-800 rounded text-zinc-400">GDPR</span>
               <span className="px-2 py-1 text-xs bg-zinc-800 rounded text-zinc-400">HIPAA</span>
             </div>
+          </motion.div>
+
+          {/* LinkedIn Profile Scanner Card */}
+          <motion.div
+            variants={itemVariants}
+            className="group relative p-6 rounded-2xl bg-gradient-to-br from-blue-950/30 to-zinc-900 border border-blue-900/40 hover:border-blue-600 hover:scale-[1.02] transition-all duration-300 md:col-span-2 lg:col-span-1"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-2 rounded-lg bg-blue-900/30 border border-blue-800/40 w-fit text-blue-400">
+                <Sparkles className="w-5 h-5" strokeWidth={1.5} />
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-950 text-blue-300 border border-blue-800/50">
+                ⚡ Viral Feature
+              </span>
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-2">LinkedIn Profile Scanner</h3>
+            <p className="text-zinc-400 text-sm mb-4">
+              Paste your LinkedIn URL to simulate recruiter boolean search visibility, headline hooks, and AI About rewrites.
+            </p>
+            <Link
+              href="/linkedin"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              Scan your LinkedIn Profile →
+            </Link>
           </motion.div>
         </motion.div>
       </div>

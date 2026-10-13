@@ -96,13 +96,14 @@ export function Hero() {
               <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
           </Link>
-          <Link href="/ats">
+          <Link href="/linkedin">
             <Button
               variant="outline"
               size="lg"
-              className="rounded-full px-8 h-12 text-base font-medium border-zinc-800 text-zinc-300 hover:bg-zinc-900 hover:text-white hover:border-zinc-700 bg-transparent"
+              className="rounded-full px-8 h-12 text-base font-medium border-blue-900/60 text-blue-300 hover:bg-blue-950/40 hover:text-white hover:border-blue-700 bg-transparent flex items-center gap-2"
             >
-              Upload Resume
+              <span>⚡</span>
+              <span>Scan LinkedIn Profile</span>
             </Button>
           </Link>
         </motion.div>

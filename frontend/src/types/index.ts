@@ -114,17 +114,142 @@ export interface ScoreBreakdown {
   scoreFormula: string;
 }
 
+export type VendorId = "workday" | "greenhouse" | "lever" | "taleo" | "icims";
+export type VendorStatus = "pass" | "warning" | "fail";
+
+export interface VendorQuirk {
+  id: string;
+  title: string;
+  status: VendorStatus;
+  impact: string;
+  reason: string;
+  fix?: string;
+}
+
+export interface VendorProfileReport {
+  vendor: VendorId;
+  vendorName: string;
+  marketShare: string;
+  status: VendorStatus;
+  score: number;
+  verdict: string;
+  quirks: VendorQuirk[];
+}
+
+export interface BooleanQueryResult {
+  query: string;
+  surfaced: boolean;
+  matchedTerms: string[];
+  missingTerms: string[];
+  excludedMatches: string[];
+  explanation: string;
+}
+
 export interface AnalysisResponse {
   parseResult: ParseResult;
   rules: RuleResult[];
   keywordReport: KeywordReport | null;
   scoreBreakdown: ScoreBreakdown;
   engineVersion: string;
+  vendorReports?: VendorProfileReport[];
   meta: {
     parseTimeMs: number;
     totalTimeMs: number;
     filename: string;
     fileSize: number;
+  };
+}
+
+export interface LinkedInAuditResult {
+  profile: {
+    name: string;
+    headline: string;
+    about: string;
+    location: string;
+    currentCompany: string;
+    vanityHandle: string;
+    isCustomVanityUrl: boolean;
+    targetRole: string;
+  };
+  overallScore: number;
+  grade: "A+" | "A" | "B" | "C" | "D";
+  verdict: string;
+  metrics: {
+    headlineScore: number;
+    aboutScore: number;
+    experienceScore: number;
+    skillsScore: number;
+    seoVisibilityScore: number;
+  };
+  headlineAudit: {
+    score: number;
+    charCount: number;
+    idealCharRange: string;
+    issues: string[];
+    strengths: string[];
+    aiSuggestions: {
+      formula: string;
+      text: string;
+      rationale: string;
+    }[];
+  };
+  aboutAudit: {
+    score: number;
+    wordCount: number;
+    hasFirstPersonVoice: boolean;
+    hasMetrics: boolean;
+    hasCallToAction: boolean;
+    issues: string[];
+    strengths: string[];
+    aiRewrite: {
+      hook: string;
+      story: string;
+      skillsHighlight: string;
+      cta: string;
+      fullText: string;
+    };
+  };
+  experienceAudit: {
+    score: number;
+    bulletCount: number;
+    quantifiedBulletsRatio: number;
+    actionVerbCount: number;
+    issues: string[];
+    strengths: string[];
+  };
+  skillsAudit: {
+    score: number;
+    detectedSkills: string[];
+    topPinnedRecommended: string[];
+    missingHighDemandSkills: string[];
+  };
+  visibilityAudit: {
+    score: number;
+    vanityUrlStatus: "optimized" | "default_numbers";
+    recruiterIndexability: "high" | "medium" | "low";
+    easyApplySafety: "safe" | "warning";
+    checklist: {
+      item: string;
+      passed: boolean;
+      tip: string;
+    }[];
+  };
+  recruiterView: {
+    simulatedCard: {
+      name: string;
+      headline: string;
+      location: string;
+      company: string;
+      matchedSkills: string[];
+      openToWorkSimulated: boolean;
+    };
+    inmailProbability: string;
+    searchTierStanding: string;
+  };
+  viralShare: {
+    shareText: string;
+    linkedinShareUrl: string;
+    twitterShareUrl: string;
   };
 }
 

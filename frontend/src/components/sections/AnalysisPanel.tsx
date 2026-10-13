@@ -10,6 +10,9 @@ import { SkillGapPanel } from "./SkillGapPanel";
 import { ScorePanel } from "./ScorePanel";
 import { SuggestionsPanel } from "./SuggestionsPanel";
 import { ApplicationKitPanel } from "./ApplicationKitPanel";
+import { AtsSimulatorPanel } from "./AtsSimulatorPanel";
+import { BenchmarkingPanel } from "./BenchmarkingPanel";
+import { VersionCompareModal } from "./VersionCompareModal";
 
 interface AnalysisPanelProps {
   data: AnalysisResponse;
@@ -19,17 +22,32 @@ interface AnalysisPanelProps {
   onReset: () => void;
 }
 
-type Tab = "parse" | "rules" | "score" | "keywords" | "suggest" | "kit";
+type Tab = "score" | "simulator" | "benchmarking" | "keywords" | "suggest" | "kit" | "parse" | "rules";
 
 export function AnalysisPanel({ data, filename, resumeFile, jdText, onReset }: AnalysisPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("score");
+  const [currentData, setCurrentData] = useState<AnalysisResponse>(data);
+  const [currentFilename, setCurrentFilename] = useState<string>(filename);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
 
-  const { parseResult, rules, keywordReport, scoreBreakdown, meta } = data;
+  const { parseResult, rules, keywordReport, scoreBreakdown, meta } = currentData;
   const criticalCount = rules.filter((r) => r.severity === "critical").length;
   const warningCount = rules.filter((r) => r.severity === "warning").length;
 
   const tabs: { id: Tab; label: string; badge?: string; badgeColor?: string }[] = [
-    { id: "score", label: "📊 Score Breakdown & Simulator" },
+    { id: "score", label: "📊 Score Breakdown" },
+    {
+      id: "simulator",
+      label: "🏢 ATS Simulator",
+      badge: "5 Engines",
+      badgeColor: "#818cf8",
+    },
+    {
+      id: "benchmarking",
+      label: "📈 Benchmarking",
+      badge: "Percentile",
+      badgeColor: "#34d399",
+    },
     ...(keywordReport
       ? [
           {
@@ -159,8 +177,16 @@ export function AnalysisPanel({ data, filename, resumeFile, jdText, onReset }: A
         </div>
 
         {/* Action buttons (top right) */}
-        <div style={{ gridColumn: "span 2", justifySelf: "end", alignSelf: "start", display: "flex", gap: 10 }}>
-          <ExportButton data={data} filename={filename} />
+        <div style={{ gridColumn: "span 2", justifySelf: "end", alignSelf: "start", display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            className="btn-secondary"
+            onClick={() => setIsCompareOpen(true)}
+            id="compare-versions-button"
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <span>⚖️</span> Compare / Re-scan
+          </button>
+          <ExportButton data={currentData} filename={currentFilename} />
           <button className="btn-secondary" onClick={onReset} id="new-scan-button">
             ← New Scan
           </button>
@@ -209,12 +235,27 @@ export function AnalysisPanel({ data, filename, resumeFile, jdText, onReset }: A
       {/* ─── Tab Content ─────────────────────────────────────────── */}
       <div style={{ animation: "fadeIn 0.3s ease-out" }} key={activeTab}>
         {activeTab === "score" && <ScorePanel scoreBreakdown={scoreBreakdown} />}
+        {activeTab === "simulator" && <AtsSimulatorPanel data={currentData} />}
+        {activeTab === "benchmarking" && <BenchmarkingPanel data={currentData} />}
         {activeTab === "keywords" && keywordReport && <SkillGapPanel report={keywordReport} />}
-        {activeTab === "suggest" && <SuggestionsPanel data={data} jdText={jdText} />}
-        {activeTab === "kit" && <ApplicationKitPanel data={data} jdText={jdText} />}
+        {activeTab === "suggest" && <SuggestionsPanel data={currentData} jdText={jdText} />}
+        {activeTab === "kit" && <ApplicationKitPanel data={currentData} jdText={jdText} />}
         {activeTab === "parse" && <ParseReport parseResult={parseResult} resumeFile={resumeFile} />}
         {activeTab === "rules" && <RulesPanel rules={rules} />}
       </div>
+
+      {/* ─── Version Comparison Modal ────────────────────────────── */}
+      <VersionCompareModal
+        currentData={currentData}
+        currentFilename={currentFilename}
+        isOpen={isCompareOpen}
+        onClose={() => setIsCompareOpen(false)}
+        onApplyNewScan={(newData, newFilename) => {
+          setCurrentData(newData);
+          setCurrentFilename(newFilename);
+          setIsCompareOpen(false);
+        }}
+      />
     </div>
   );
 }

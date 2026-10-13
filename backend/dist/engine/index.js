@@ -13,6 +13,7 @@ const section_detector_js_1 = require("./section-detector.js");
 const rule_engine_js_1 = require("./rule-engine.js");
 const keyword_matcher_js_1 = require("./keyword-matcher.js");
 const scorer_js_1 = require("./scorer.js");
+const vendor_profiles_js_1 = require("./vendor-profiles.js");
 const ENGINE_VERSION = "1.0.1-phase1";
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_PAGE_COUNT = 10;
@@ -191,11 +192,13 @@ async function analyze(parseResult, jdText) {
         }
     }
     const scoreBreakdown = (0, scorer_js_1.computeScore)(parseResult, rules, keywordReport);
+    const vendorReports = (0, vendor_profiles_js_1.evaluateVendorProfiles)(parseResult, rules, keywordReport);
     return {
         parseResult,
         rules,
         keywordReport,
         scoreBreakdown,
+        vendorReports,
         engineVersion: ENGINE_VERSION,
     };
 }

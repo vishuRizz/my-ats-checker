@@ -9,8 +9,9 @@ import { Show, SignInButton, UserButton } from "@clerk/nextjs"
 
 const navItems = [
   { label: "Features", href: "#features" },
+  { label: "Resume ATS", href: "/ats" },
+  { label: "LinkedIn Scanner", href: "/linkedin" },
   { label: "Pricing", href: "#pricing" },
-  { label: "Scanner", href: "/ats" },
 ]
 
 export function Navbar() {

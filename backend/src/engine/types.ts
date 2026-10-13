@@ -203,9 +203,7 @@ export interface ScoreBreakdown {
   scoreFormula: string;        // human-readable formula showing the weights used
 }
 
-// ============================================================
-// Full Analysis Response
-// ============================================================
+import type { VendorProfileReport } from "./vendor-profiles.js";
 
 export interface AnalysisResponse {
   parseResult: ParseResult;
@@ -213,4 +211,5 @@ export interface AnalysisResponse {
   keywordReport: KeywordReport | null;
   scoreBreakdown: ScoreBreakdown;
   engineVersion: string;
+  vendorReports?: VendorProfileReport[];
 }
