@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, DragEvent } from "react";
+import { ArrowRight, FileText, CheckCircle2, ChevronDown, Sparkles, X } from "lucide-react";
 
 interface UploadZoneProps {
   onAnalyze: (file: File, jd: string) => void;
@@ -34,12 +35,15 @@ export function UploadZone({ onAnalyze, jdText, onJdChange }: UploadZoneProps) {
     setFile(f);
   }, []);
 
-  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setDragOver(false);
-    const f = e.dataTransfer.files[0];
-    if (f) handleFile(f);
-  }, [handleFile]);
+  const handleDrop = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setDragOver(false);
+      const f = e.dataTransfer.files[0];
+      if (f) handleFile(f);
+    },
+    [handleFile]
+  );
 
   const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -57,200 +61,176 @@ export function UploadZone({ onAnalyze, jdText, onJdChange }: UploadZoneProps) {
 
   return (
     <div className="max-w-3xl mx-auto px-6 pb-20 animate-fade-in-up">
-      {/* Drop Zone */}
-      <div
-        className={`dropzone ${dragOver ? "drag-over" : ""}`}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={() => setDragOver(false)}
-        onClick={() => !file && fileInputRef.current?.click()}
-        style={{
-          padding: file ? "28px" : "60px 40px",
-          cursor: file ? "default" : "pointer",
-          textAlign: "center",
-          marginBottom: 20,
-          transition: "all 0.3s ease",
-        }}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          style={{ display: "none" }}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-          id="resume-file-input"
-        />
+      {/* Container Card */}
+      <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-100 shadow-[0_4px_32px_rgba(0,0,0,0.06)]">
+        {/* Drop Zone */}
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={() => setDragOver(false)}
+          onClick={() => !file && fileInputRef.current?.click()}
+          className={`rounded-2xl border-2 border-dashed transition-all duration-300 text-center ${
+            file
+              ? "p-5 bg-slate-50/80 border-slate-200 cursor-default"
+              : dragOver
+              ? "p-10 sm:p-14 border-[#F26522] bg-orange-50/40 shadow-inner cursor-pointer"
+              : "p-10 sm:p-14 border-slate-200/90 bg-[#FAFAFA] hover:border-[#F26522] hover:bg-orange-50/20 cursor-pointer"
+          }`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleFile(f);
+            }}
+            id="resume-file-input"
+          />
 
-        {!file ? (
-          <>
-            <div className="w-20 h-20 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-3xl mx-auto mb-6 shadow-inner">
-              📄
-            </div>
-            <h3 className="text-xl font-bold mb-2 text-white">
-              Drop your resume here
-            </h3>
-            <p className="text-zinc-400 text-sm mb-6">
-              or click to browse files
-            </p>
-            <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
-              {["PDF", "DOCX"].map((ext) => (
-                <span key={ext} style={{
-                  padding: "4px 12px", borderRadius: 99,
-                  background: "var(--bg-elevated)",
-                  border: "1px solid var(--border)",
-                  fontSize: "0.78rem", color: "var(--text-muted)",
-                  fontFamily: "var(--font-mono)",
-                }}>
-                  .{ext.toLowerCase()}
+          {!file ? (
+            <div>
+              <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center text-3xl mx-auto mb-5 text-[#051A24]">
+                📄
+              </div>
+              <h3 className="text-xl font-bold mb-2 text-[#051A24]">
+                Drop your resume here
+              </h3>
+              <p className="text-[#273C46]/80 text-sm mb-6">
+                or click to browse from your device
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {["PDF", "DOCX"].map((ext) => (
+                  <span
+                    key={ext}
+                    className="px-3 py-1 rounded-full bg-white border border-slate-200 text-xs font-mono font-medium text-slate-600 shadow-xs"
+                  >
+                    .{ext.toLowerCase()}
+                  </span>
+                ))}
+                <span className="px-3 py-1 rounded-full bg-white border border-slate-200 text-xs font-medium text-slate-600 shadow-xs">
+                  Max 5MB
                 </span>
-              ))}
-              <span style={{
-                padding: "4px 12px", borderRadius: 99,
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--border)",
-                fontSize: "0.78rem", color: "var(--text-muted)",
-              }}>
-                Max 5MB
+                <span className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-700 shadow-xs">
+                  Zero Data Retention
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4 text-left">
+              <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-xl shrink-0 shadow-sm text-[#051A24]">
+                {file.name.toLowerCase().endsWith(".pdf") ? "📄" : "📝"}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-[#051A24] text-sm sm:text-base truncate">
+                    {file.name}
+                  </p>
+                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {formatSize(file.size)} · {file.name.split(".").pop()?.toUpperCase()} Ready for Multi-ATS Audit
+                </p>
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFile(null);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+                className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors shadow-xs"
+                title="Remove file"
+                aria-label="Remove file"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Job Description Collapsible */}
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-[#FAFAFA] overflow-hidden transition-all">
+          <button
+            onClick={() => setJdExpanded((v) => !v)}
+            className="w-full px-5 py-4 flex items-center justify-between text-left cursor-pointer hover:bg-slate-100/60 transition-colors"
+            id="jd-expand-button"
+            aria-expanded={jdExpanded}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-sm shadow-xs">
+                🎯
+              </div>
+              <span className="font-semibold text-sm text-[#051A24]">
+                Target Job Description
+              </span>
+              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-[#F26522]">
+                Recommended for Match Score
               </span>
             </div>
-          </>
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            {/* File icon */}
-            <div className="w-14 h-14 rounded-xl bg-zinc-800 flex items-center justify-center text-2xl shrink-0 text-white shadow-inner border border-zinc-700">
-              {file.name.toLowerCase().endsWith(".pdf") ? "📄" : "📝"}
-            </div>
+            <ChevronDown
+              size={18}
+              className={`text-slate-500 transition-transform duration-300 ${
+                jdExpanded ? "rotate-180" : ""
+              }`}
+            />
+          </button>
 
-            <div style={{ flex: 1, textAlign: "left" }}>
-              <p style={{ fontWeight: 600, color: "var(--text-primary)", marginBottom: 4, fontSize: "0.95rem" }}>
-                {file.name}
+          {jdExpanded && (
+            <div className="px-5 pb-5 pt-1 border-t border-slate-200/80 bg-white">
+              <p className="text-xs text-[#273C46]/80 mb-3 pt-2 leading-relaxed">
+                Paste the target job description to calculate exact keyword density match, missing skills, and tailored bullet point recommendations.
               </p>
-              <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-                {formatSize(file.size)} · {file.name.split(".").pop()?.toUpperCase()}
-              </p>
+              <textarea
+                id="jd-textarea"
+                value={jdText}
+                onChange={(e) => onJdChange(e.target.value)}
+                maxLength={20_000}
+                placeholder="Paste the job posting requirements here... (e.g. Required skills: React, TypeScript, AWS, System Design...)"
+                rows={6}
+                className="w-full bg-[#FAFAFA] border border-slate-200 rounded-xl p-3.5 text-[#051A24] text-xs sm:text-sm leading-relaxed outline-none focus:border-[#051A24] focus:bg-white transition-all resize-y placeholder:text-slate-400 font-sans"
+              />
+              {jdText && (
+                <div className="flex justify-between items-center mt-2 text-[11px] text-slate-500">
+                  <span>{jdText.split(/\s+/).filter(Boolean).length} words parsed</span>
+                  <span>{jdText.length.toLocaleString()} / 20,000 characters</span>
+                </div>
+              )}
             </div>
+          )}
+        </div>
 
-            <button
-              onClick={(e) => { e.stopPropagation(); setFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-              style={{
-                background: "transparent", border: "none",
-                color: "var(--text-muted)", cursor: "pointer",
-                fontSize: "1.2rem", padding: "4px",
-                transition: "color 0.2s",
-              }}
-              title="Remove file"
-              aria-label="Remove file"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* JD Section */}
-      <div style={{
-        background: "var(--bg-card)",
-        border: "1px solid var(--border)",
-        borderRadius: 14,
-        overflow: "hidden",
-        marginBottom: 20,
-        transition: "border-color 0.2s ease",
-      }}>
+        {/* Primary Submit Button */}
         <button
-          onClick={() => setJdExpanded((v) => !v)}
-          style={{
-            width: "100%", padding: "16px 20px",
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            background: "transparent", border: "none", cursor: "pointer",
-            color: "var(--text-primary)",
-          }}
-          id="jd-expand-button"
-          aria-expanded={jdExpanded}
+          onClick={handleSubmit}
+          disabled={!file}
+          id="analyze-button"
+          className={`w-full mt-6 py-4 px-6 rounded-full font-semibold text-sm sm:text-base flex items-center justify-center gap-2.5 transition-all shadow-md ${
+            file
+              ? "bg-[#051A24] text-white hover:bg-[#0D212C] hover:shadow-xl cursor-pointer"
+              : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
+          }`}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{
-              width: 28, height: 28, borderRadius: 7,
-              background: jdExpanded ? "#27272a" : "var(--bg-elevated)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "0.9rem", transition: "background 0.2s",
-            }}>
-              🎯
-            </span>
-            <span style={{ fontWeight: 600, fontSize: "0.95rem" }}>
-              Add Job Description
-            </span>
-            <span style={{
-              fontSize: "0.75rem", padding: "2px 10px",
-              borderRadius: 99, fontWeight: 500,
-              background: "rgba(245,158,11,0.1)",
-              color: "#f59e0b",
-              border: "1px solid rgba(245,158,11,0.2)",
-            }}>
-              Recommended
-            </span>
-          </div>
-          <span style={{
-            color: "var(--text-muted)", transition: "transform 0.2s",
-            transform: jdExpanded ? "rotate(180deg)" : "rotate(0deg)",
-            display: "inline-block",
-          }}>▼</span>
+          {file ? (
+            <>
+              <Sparkles size={18} className="text-[#F26522]" />
+              <span>
+                Analyze &ldquo;{file.name.length > 28 ? file.name.slice(0, 26) + "…" : file.name}&rdquo;
+              </span>
+              <ArrowRight size={18} />
+            </>
+          ) : (
+            <span>Upload a Resume to Begin Simulation</span>
+          )}
         </button>
 
-        {jdExpanded && (
-          <div style={{ padding: "0 20px 20px", borderTop: "1px solid var(--border)" }}>
-            <p style={{ fontSize: "0.83rem", color: "var(--text-secondary)", marginBottom: 12, paddingTop: 12 }}>
-              Paste the full job description. Results will include keyword match analysis and a JD-specific score.
-            </p>
-            <textarea
-              id="jd-textarea"
-              value={jdText}
-              onChange={(e) => onJdChange(e.target.value)}
-              maxLength={20_000}
-              placeholder="Paste job description here...
-
-We're looking for a Senior Software Engineer with 5+ years of experience in React, TypeScript, and Node.js. Required: experience with AWS, PostgreSQL, and CI/CD pipelines. Nice to have: GraphQL, Kubernetes..."
-              style={{
-                width: "100%", minHeight: 180,
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 10,
-                padding: "14px 16px",
-                color: "var(--text-primary)",
-                fontSize: "0.875rem",
-                fontFamily: "inherit",
-                lineHeight: 1.6,
-                resize: "vertical",
-                outline: "none",
-                transition: "border-color 0.2s",
-              }}
-              onFocus={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.5)"; }}
-              onBlur={(e) => { e.target.style.borderColor = "var(--border)"; }}
-            />
-            {jdText && (
-              <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 8 }}>
-                {jdText.split(/\s+/).filter(Boolean).length} words · {jdText.length.toLocaleString()} / 20,000 characters
-              </p>
-            )}
-          </div>
-        )}
+        {/* Security & Confidentiality Reassurance */}
+        <p className="text-center text-xs text-slate-500 mt-4 leading-relaxed">
+          🔒 100% confidential. Client-side verified. Document is auto-deleted immediately after analysis.
+        </p>
       </div>
-
-      {/* Submit */}
-      <button
-        className="w-full shimmer-btn bg-white text-zinc-950 hover:bg-zinc-200 rounded-full px-8 h-14 text-base font-medium shadow-lg shadow-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-        onClick={handleSubmit}
-        disabled={!file}
-        id="analyze-button"
-      >
-        {file ? `Analyze "${file.name.length > 30 ? file.name.slice(0, 28) + "…" : file.name}"` : "Upload a Resume to Analyze"}
-      </button>
-
-      <p style={{
-        textAlign: "center", marginTop: 12,
-        fontSize: "0.78rem", color: "var(--text-muted)",
-      }}>
-        🔒 No signup required. File is never stored. Auto-deleted after analysis.
-      </p>
     </div>
   );
 }

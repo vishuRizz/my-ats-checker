@@ -2,59 +2,51 @@
 
 export function HeroSection() {
   return (
-    <section className="pt-20 pb-10 px-6 text-center max-w-4xl mx-auto animate-fade-in-up">
+    <section className="pt-12 sm:pt-16 pb-8 px-6 text-center max-w-4xl mx-auto animate-fade-in-up">
       {/* Badge */}
-      <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 mb-8">
-        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-glow" />
-        <span className="text-sm font-medium text-zinc-400">
-          Transparent ATS analysis - no magic numbers
+      <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm mb-6">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+        <span className="text-xs font-semibold text-[#051A24] tracking-wide">
+          Multi-Engine Parser Simulator · Zero Guesswork
         </span>
       </div>
 
       {/* Headline */}
-      <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight text-white mb-6" style={{ fontFamily: "var(--font-cal-sans), sans-serif" }}>
-        See what the <span className="text-zinc-500">ATS actually sees</span>
+      <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight text-[#051A24] leading-[1.12] mb-5">
+        See what the ATS
+        <br />
+        <span className="font-mondwest italic text-[#051A24]/75">actually extracts.</span>
       </h1>
 
       {/* Subheadline */}
-      <p className="text-lg sm:text-xl text-zinc-400 leading-relaxed max-w-2xl mx-auto mb-12">
-        Upload your resume and get a full parse analysis: exactly what text was extracted,
-        what was lost, formatting issues, and a keyword match against the job description.
+      <p className="text-base sm:text-lg text-[#273C46]/80 leading-relaxed max-w-2xl mx-auto mb-10">
+        Upload your resume and get an instant parsing audit: raw text extraction, formatting hazards,
+        multi-engine compatibility (Greenhouse, Workday, Ashby), and keyword alignment against your target job.
       </p>
 
       {/* Feature pills */}
-      <div style={{
-        display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12, marginBottom: 16,
-      }}>
+      <div className="flex flex-wrap justify-center gap-2.5 mb-8">
         {[
-          { icon: "📊", label: "Parse Report" },
-          { icon: "⚙️", label: "10 Formatting Rules" },
-          { icon: "🎯", label: "Keyword Match" },
-          { icon: "📈", label: "Score Breakdown" },
-          { icon: "🔒", label: "Privacy-first" },
+          { icon: "⚡", label: "Multi-ATS Engine Check" },
+          { icon: "⚙️", label: "10 Structural Rules" },
+          { icon: "🎯", label: "Keyword Gap Analysis" },
+          { icon: "📊", label: "Deterministic Score" },
+          { icon: "🔒", label: "Privacy-First · Client Safe" },
         ].map((f) => (
-          <div key={f.label} style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            padding: "8px 16px", borderRadius: 99,
-            background: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            fontSize: "0.85rem", color: "var(--text-secondary)",
-            fontWeight: 500,
-          }}>
+          <div
+            key={f.label}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-slate-200/90 text-xs font-medium text-[#273C46] shadow-sm hover:border-slate-300 transition-colors"
+          >
             <span>{f.icon}</span>
             <span>{f.label}</span>
           </div>
         ))}
       </div>
 
-      {/* Honesty note */}
-      <p style={{
-        fontSize: "0.78rem", color: "var(--text-muted)",
-        maxWidth: 560, margin: "0 auto",
-      }}>
-        ⚖️ No ATS publishes a universal score. We show&nbsp;
-        <em>parse analysis</em>, <em>match analysis</em>, and&nbsp;
-        <em>estimated scores</em> - never claim to guarantee a pass.
+      {/* Transparency Note */}
+      <p className="text-xs text-[#273C46]/60 max-w-xl mx-auto leading-relaxed">
+        ⚖️ No ATS uses a universal score. We reveal real parse output, keyword density, and formatting risks
+        so you can bypass automated candidate filters with confidence.
       </p>
     </section>
   );

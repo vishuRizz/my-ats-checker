@@ -13,6 +13,7 @@ import { ApplicationKitPanel } from "./ApplicationKitPanel";
 import { AtsSimulatorPanel } from "./AtsSimulatorPanel";
 import { BenchmarkingPanel } from "./BenchmarkingPanel";
 import { VersionCompareModal } from "./VersionCompareModal";
+import { ArrowLeft, GitCompare } from "lucide-react";
 
 interface AnalysisPanelProps {
   data: AnalysisResponse;
@@ -40,26 +41,26 @@ export function AnalysisPanel({ data, filename, resumeFile, jdText, onReset }: A
       id: "simulator",
       label: "🏢 ATS Simulator",
       badge: "5 Engines",
-      badgeColor: "#818cf8",
+      badgeColor: "#6366f1",
     },
     {
       id: "benchmarking",
       label: "📈 Benchmarking",
       badge: "Percentile",
-      badgeColor: "#34d399",
+      badgeColor: "#10b981",
     },
     ...(keywordReport
       ? [
           {
             id: "keywords" as Tab,
-            label: "🎯 Skill Gap & JD Match",
+            label: "🎯 Skill Gap & Match",
             badge: `${keywordReport.matchRate}%`,
             badgeColor:
               keywordReport.matchRate >= 70
-                ? "var(--green)"
+                ? "#10b981"
                 : keywordReport.matchRate >= 40
-                ? "var(--amber)"
-                : "var(--red)",
+                ? "#f59e0b"
+                : "#ef4444",
           },
           { id: "suggest" as Tab, label: "✨ AI Bullet Rewrites" },
           { id: "kit" as Tab, label: "📝 Application Kit" },
@@ -70,170 +71,138 @@ export function AnalysisPanel({ data, filename, resumeFile, jdText, onReset }: A
       id: "rules",
       label: "⚙️ Formatting Rules",
       badge: `${rules.length}`,
-      badgeColor: criticalCount > 0 ? "var(--red)" : warningCount > 0 ? "var(--amber)" : "var(--green)",
+      badgeColor: criticalCount > 0 ? "#ef4444" : warningCount > 0 ? "#f59e0b" : "#10b981",
     },
   ];
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 80px", animation: "fadeIn 0.4s ease-out" }}>
-      {/* ─── Summary Header ─────────────────────────────────────── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "auto 1fr",
-          gap: 24,
-          alignItems: "center",
-          padding: "32px 0 24px",
-          borderBottom: "1px solid var(--border)",
-          marginBottom: 24,
-        }}
-      >
-        {/* Score Ring */}
-        <ScoreRing score={scoreBreakdown.overall} size={100} />
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-24 animate-fade-in">
+      {/* ─── Summary Header Card ─────────────────────────────────── */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-[0_4px_24px_rgba(0,0,0,0.04)] mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+          {/* Left: Score ring + Info */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+            <div className="shrink-0 flex items-center justify-center">
+              <ScoreRing score={scoreBreakdown.overall} size={105} />
+            </div>
 
-        {/* Info */}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
-            <h1 style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
-              {filename}
-            </h1>
-            <span
-              style={{
-                fontSize: "0.75rem",
-                padding: "3px 10px",
-                borderRadius: 99,
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--border)",
-                color: "var(--text-muted)",
-                fontFamily: "var(--font-mono)",
-              }}
-            >
-              {parseResult.fileType.toUpperCase()} · {parseResult.pageCount}p
-            </span>
-          </div>
-
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: 16 }}>
-            {scoreBreakdown.estimatedLabel} · Analyzed in {(meta.totalTimeMs / 1000).toFixed(1)}s ·{" "}
-            {parseResult.sections.length} sections detected
-          </p>
-
-          {/* Quick stats */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-            {[
-              {
-                label: `${criticalCount} Critical`,
-                color: criticalCount > 0 ? "var(--red)" : "var(--green)",
-                bg: criticalCount > 0 ? "var(--red-dim)" : "var(--green-dim)",
-              },
-              {
-                label: `${warningCount} Warnings`,
-                color: warningCount > 0 ? "var(--amber)" : "var(--green)",
-                bg: warningCount > 0 ? "var(--amber-dim)" : "var(--green-dim)",
-              },
-              parseResult.isMultiColumn && {
-                label: "Multi-column layout",
-                color: "var(--amber)",
-                bg: "var(--amber-dim)",
-              },
-              parseResult.isImageOnly && {
-                label: "Image-only PDF (No text)",
-                color: "var(--red)",
-                bg: "var(--red-dim)",
-              },
-              keywordReport && {
-                label: `${keywordReport.matchRate}% JD match`,
-                color:
-                  keywordReport.matchRate >= 70
-                    ? "var(--green)"
-                    : keywordReport.matchRate >= 40
-                    ? "var(--amber)"
-                    : "var(--red)",
-                bg:
-                  keywordReport.matchRate >= 70
-                    ? "var(--green-dim)"
-                    : keywordReport.matchRate >= 40
-                    ? "var(--amber-dim)"
-                    : "var(--red-dim)",
-              },
-            ]
-              .filter((stat): stat is { label: string; color: string; bg: string } => Boolean(stat))
-              .map((stat, i) => (
-                <span
-                  key={i}
-                  style={{
-                    padding: "4px 12px",
-                    borderRadius: 99,
-                    background: stat.bg,
-                    color: stat.color,
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    border: `1px solid ${stat.color}33`,
-                  }}
-                >
-                  {stat.label}
+            <div>
+              <div className="flex items-center gap-2.5 mb-2 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-bold text-[#051A24] tracking-tight">
+                  {filename}
+                </h1>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-mono font-semibold">
+                  {parseResult.fileType.toUpperCase()} · {parseResult.pageCount}p
                 </span>
-              ))}
+              </div>
+
+              <p className="text-xs sm:text-sm text-[#273C46]/80 mb-4">
+                <strong className="text-[#051A24]">{scoreBreakdown.estimatedLabel}</strong> · Analyzed in{" "}
+                {(meta.totalTimeMs / 1000).toFixed(1)}s · {parseResult.sections.length} sections recognized
+              </p>
+
+              {/* Status Badges */}
+              <div className="flex flex-wrap gap-2">
+                {[
+                  {
+                    label: `${criticalCount} Critical Flags`,
+                    color: criticalCount > 0 ? "text-red-700 bg-red-50 border-red-200" : "text-emerald-700 bg-emerald-50 border-emerald-200",
+                  },
+                  {
+                    label: `${warningCount} Warnings`,
+                    color: warningCount > 0 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-emerald-700 bg-emerald-50 border-emerald-200",
+                  },
+                  parseResult.isMultiColumn && {
+                    label: "Multi-column layout",
+                    color: "text-amber-700 bg-amber-50 border-amber-200",
+                  },
+                  parseResult.isImageOnly && {
+                    label: "Image-only PDF (Unparseable)",
+                    color: "text-red-700 bg-red-50 border-red-200",
+                  },
+                  keywordReport && {
+                    label: `${keywordReport.matchRate}% Job Match`,
+                    color:
+                      keywordReport.matchRate >= 70
+                        ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                        : keywordReport.matchRate >= 40
+                        ? "text-amber-700 bg-amber-50 border-amber-200"
+                        : "text-red-700 bg-red-50 border-red-200",
+                  },
+                ]
+                  .filter(Boolean)
+                  .map((badge: any, i) => (
+                    <span
+                      key={i}
+                      className={`text-[11px] font-semibold px-3 py-1 rounded-full border shadow-2xs ${badge.color}`}
+                    >
+                      {badge.label}
+                    </span>
+                  ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2.5 pt-4 lg:pt-0">
+            <button
+              onClick={() => setIsCompareOpen(true)}
+              id="compare-versions-button"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white border border-slate-200 hover:border-slate-300 text-xs sm:text-sm font-medium text-slate-700 hover:text-black shadow-xs transition-colors cursor-pointer"
+            >
+              <GitCompare size={14} className="text-[#F26522]" />
+              <span>Compare Versions</span>
+            </button>
+
+            <ExportButton data={currentData} filename={currentFilename} />
+
+            <button
+              onClick={onReset}
+              id="new-scan-button"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#051A24] hover:bg-[#0D212C] text-xs sm:text-sm font-semibold text-white shadow-sm transition-all cursor-pointer"
+            >
+              <ArrowLeft size={14} />
+              <span>New Scan</span>
+            </button>
           </div>
         </div>
-
-        {/* Action buttons (top right) */}
-        <div style={{ gridColumn: "span 2", justifySelf: "end", alignSelf: "start", display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button
-            className="btn-secondary"
-            onClick={() => setIsCompareOpen(true)}
-            id="compare-versions-button"
-            style={{ display: "flex", alignItems: "center", gap: 6 }}
-          >
-            <span>⚖️</span> Compare / Re-scan
-          </button>
-          <ExportButton data={currentData} filename={currentFilename} />
-          <button className="btn-secondary" onClick={onReset} id="new-scan-button">
-            ← New Scan
-          </button>
-        </div>
       </div>
 
-      {/* ─── Tabs ────────────────────────────────────────────────── */}
-      <div
-        style={{
-          display: "flex",
-          gap: 6,
-          overflowX: "auto",
-          paddingBottom: 4,
-          marginBottom: 24,
-          borderBottom: "1px solid var(--border)",
-          scrollbarWidth: "none",
-        }}
-      >
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            className={`tab-button ${activeTab === tab.id ? "active" : ""}`}
-            onClick={() => setActiveTab(tab.id)}
-            id={`tab-${tab.id}`}
-            style={{ display: "flex", alignItems: "center", gap: 8 }}
-          >
-            {tab.label}
-            {tab.badge && (
-              <span
-                style={{
-                  fontSize: "0.72rem",
-                  padding: "2px 7px",
-                  borderRadius: 99,
-                  fontWeight: 700,
-                  background: activeTab === tab.id ? "rgba(255,255,255,0.2)" : `${tab.badgeColor}22`,
-                  color: activeTab === tab.id ? "white" : tab.badgeColor,
-                }}
-              >
-                {tab.badge}
-              </span>
-            )}
-          </button>
-        ))}
+      {/* ─── Pill Tabs Bar ───────────────────────────────────────── */}
+      <div className="flex gap-2 overflow-x-auto pb-3 mb-6 no-scrollbar border-b border-slate-200/80">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              id={`tab-${tab.id}`}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all shrink-0 cursor-pointer shadow-xs ${
+                isActive
+                  ? "bg-[#051A24] text-white shadow-sm font-semibold"
+                  : "bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:border-slate-300"
+              }`}
+            >
+              <span>{tab.label}</span>
+              {tab.badge && (
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    isActive
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-100 text-slate-700"
+                  }`}
+                  style={!isActive && tab.badgeColor ? { color: tab.badgeColor } : undefined}
+                >
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {/* ─── Tab Content ─────────────────────────────────────────── */}
-      <div style={{ animation: "fadeIn 0.3s ease-out" }} key={activeTab}>
+      {/* ─── Tab Content Panels ──────────────────────────────────── */}
+      <div className="animate-fade-in" key={activeTab}>
         {activeTab === "score" && <ScorePanel scoreBreakdown={scoreBreakdown} />}
         {activeTab === "simulator" && <AtsSimulatorPanel data={currentData} />}
         {activeTab === "benchmarking" && <BenchmarkingPanel data={currentData} />}

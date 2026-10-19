@@ -9,6 +9,7 @@ import { AnalysisPanel } from "@/components/sections/AnalysisPanel";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Navbar } from "@/components/ui/Navbar";
 import { HeroSection } from "@/components/sections/HeroSection";
+import { AlertCircle, RotateCcw } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -135,14 +136,13 @@ function AtsCheckerContent() {
   }, []);
 
   return (
-    <div style={{ minHeight: "100vh", position: "relative" }}>
-      {/* Background gradient orbs */}
-      <div aria-hidden="true" className="fixed inset-0 overflow-hidden pointer-events-none z-0 bg-zinc-950">
-        <div className="absolute inset-0 bg-gradient-to-b from-zinc-950 via-zinc-950 to-zinc-900 pointer-events-none" />
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-zinc-800/20 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#FAFAFA] text-[#051A24] font-sans relative clean-theme selection:bg-orange-100 selection:text-orange-950">
+      {/* ─── Ambient Glow Backdrop ─── */}
+      <div aria-hidden="true" className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[550px] bg-gradient-to-b from-orange-100/40 via-slate-100/30 to-transparent rounded-full blur-3xl pointer-events-none" />
       </div>
 
-      <div style={{ position: "relative", zIndex: 1 }}>
+      <div className="relative z-10">
         <Navbar onReset={state.status !== "idle" ? handleReset : undefined} />
 
         {state.status === "idle" && (
@@ -153,46 +153,32 @@ function AtsCheckerContent() {
         )}
 
         {(state.status === "uploading" || state.status === "analyzing") && (
-          <LoadingState status={state.status} progress={state.status === "uploading" ? state.progress : undefined} />
+          <LoadingState
+            status={state.status}
+            progress={state.status === "uploading" ? state.progress : undefined}
+          />
         )}
 
         {state.status === "error" && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: "70vh",
-              padding: "40px 20px",
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: "50%",
-                background: "rgba(239,68,68,0.1)",
-                border: "1px solid rgba(239,68,68,0.3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "2rem",
-                marginBottom: 24,
-              }}
-            >
-              ⚠️
+          <div className="flex flex-col items-center justify-center min-h-[65vh] px-6 py-12 animate-fade-in">
+            <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-100 shadow-[0_8px_32px_rgba(0,0,0,0.06)] max-w-md w-full text-center">
+              <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 mx-auto mb-6 shadow-xs">
+                <AlertCircle size={32} />
+              </div>
+              <h2 className="text-2xl font-bold text-[#051A24] mb-3">
+                Analysis Failed
+              </h2>
+              <p className="text-sm text-[#273C46]/80 leading-relaxed mb-8">
+                {state.message}
+              </p>
+              <button
+                onClick={handleReset}
+                className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-6 rounded-full bg-[#051A24] text-white hover:bg-[#0D212C] font-semibold text-sm transition-all shadow-md cursor-pointer"
+              >
+                <RotateCcw size={16} />
+                <span>Try Again</span>
+              </button>
             </div>
-            <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>
-              Analysis Failed
-            </h2>
-            <p style={{ color: "var(--text-secondary)", maxWidth: 480, lineHeight: 1.7, marginBottom: 32 }}>
-              {state.message}
-            </p>
-            <button className="btn-primary" onClick={handleReset}>
-              Try Again
-            </button>
           </div>
         )}
 
@@ -212,7 +198,7 @@ function AtsCheckerContent() {
 
 export default function AtsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-zinc-950" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#FAFAFA]" />}>
       <AtsCheckerContent />
     </Suspense>
   );
