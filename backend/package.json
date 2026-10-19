@@ -5,10 +5,10 @@
   "main": "dist/server.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "dev": "node init && tsx watch src/server.ts",
+    "build": "node init && tsc",
     "test": "tsx --test src/**/*.test.ts",
-    "start": "node dist/server.js",
+    "start": "node init && node dist/server.js",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"

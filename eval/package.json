@@ -2,7 +2,7 @@
   "name": "ats-eval",
   "version": "1.0.0",
   "scripts": {
-    "run-eval": "tsx runner.ts",
+    "run-eval": "node init && tsx runner.ts",
     "eval:report": "tsx runner.ts --report reports/latest.json",
     "quality-gate": "tsx runner.ts --report reports/latest.json --strict-gates"
   },

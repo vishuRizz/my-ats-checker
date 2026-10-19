@@ -15,15 +15,12 @@ out/
 **/out/
 
 # ─── Environment / secrets ────────────────────
-.env
-.env.local
 .env.*.local
 !.env.example
 
 # ─── OS & editor ──────────────────────────────
 .DS_Store
 Thumbs.db
-.vscode/
 .idea/
 
 # ─── TypeScript cache ─────────────────────────
@@ -31,3 +28,4 @@ Thumbs.db
 
 # ─── Local evaluation reports ────────────────────────────────
 eval/reports/
+config.bat

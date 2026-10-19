@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, ArrowUpRight } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
 const FOOTER_VIDEO =
@@ -10,15 +10,22 @@ const NAV_LINKS = [
   { label: 'Resume ATS Scanner', href: '/ats' },
   { label: 'LinkedIn Profile Scanner', href: '/linkedin' },
   { label: 'Job Tracker & Pipeline', href: '/profile' },
-  { label: 'Workflow & How It Works', href: '#how-it-works' },
-  { label: 'Pricing Plans', href: '#pricing' },
+  { label: 'Workflow & How It Works', href: '/#how-it-works' },
+  { label: 'Pricing Plans', href: '/#pricing' },
 ];
 
-const RESOURCE_LINKS = [
-  { label: 'Greenhouse Parsing Guide', href: '/ats' },
-  { label: 'Ashby & Workday Matrix', href: '/ats' },
-  { label: 'Skill Gap Optimizer', href: '/ats' },
-  { label: 'STAR Bullet Point Generator', href: '/ats' },
+const COMPANY_LINKS = [
+  { label: 'About Us', href: '/about' },
+  { label: 'Contact & Support', href: '/contact' },
+  { label: 'Security & Architecture', href: '/security' },
+  { label: 'Common Questions (FAQ)', href: '/#faq' },
+];
+
+const LEGAL_LINKS = [
+  { label: 'Privacy Policy', href: '/privacy' },
+  { label: 'Terms of Service', href: '/terms' },
+  { label: 'Security & Confidentiality', href: '/security' },
+  { label: 'Data Erasure Request', href: '/contact' },
 ];
 
 const SOCIAL_LINKS = [
@@ -41,8 +48,8 @@ export default function Footer() {
       />
 
       {/* ── Gradient overlays ── */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black/85" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-transparent to-black/90" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
 
       {/* ── Content ── */}
       <div className="relative z-10">
@@ -75,7 +82,7 @@ export default function Footer() {
               <ArrowRight size={15} />
             </Link>
             <Link
-              href="#pricing"
+              href="/#pricing"
               className="inline-flex items-center justify-center gap-2 border border-white/20 text-white/90 hover:text-white hover:border-white/40 rounded-full px-7 py-3.5 text-sm font-medium transition-colors"
             >
               View pricing
@@ -88,21 +95,26 @@ export default function Footer() {
 
         {/* ─── Footer links ─── */}
         <div className="px-6 md:px-12 py-14">
-          <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-10 md:gap-8">
+          <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-10 md:gap-8">
 
             {/* Brand col */}
-            <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2.5 mb-4">
+            <div className="col-span-2 md:col-span-2">
+              <Link href="/" className="flex items-center gap-2.5 mb-4 inline-flex">
                 <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-zinc-950 font-bold text-xs">
                   ✓
                 </div>
                 <span className="text-white font-bold text-base tracking-tight">
                   ATS<span className="text-[#F26522]">Checker</span>
                 </span>
-              </div>
-              <p className="text-white/50 text-sm leading-relaxed max-w-[220px]">
+              </Link>
+              <p className="text-white/50 text-sm leading-relaxed max-w-[280px] mb-5">
                 Multi-engine ATS simulation and career optimizer for ambitious professionals.
+                Transparent, deterministic scoring with zero data monetization.
               </p>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/60 text-xs">
+                <ShieldCheck size={14} className="text-emerald-400" />
+                <span>Zero Data Retention Architecture</span>
+              </div>
             </div>
 
             {/* Product links */}
@@ -122,11 +134,11 @@ export default function Footer() {
               </ul>
             </div>
 
-            {/* Resources links */}
+            {/* Company & Support links */}
             <div>
-              <p className="text-white/40 text-[11px] uppercase tracking-[0.15em] font-mono mb-4 font-semibold">Parsers &amp; Tools</p>
+              <p className="text-white/40 text-[11px] uppercase tracking-[0.15em] font-mono mb-4 font-semibold">Company</p>
               <ul className="flex flex-col gap-3">
-                {RESOURCE_LINKS.map((l) => (
+                {COMPANY_LINKS.map((l) => (
                   <li key={l.label}>
                     <Link
                       href={l.href}
@@ -139,35 +151,62 @@ export default function Footer() {
               </ul>
             </div>
 
-            {/* Connect links */}
+            {/* Legal & Connect */}
             <div>
-              <p className="text-white/40 text-[11px] uppercase tracking-[0.15em] font-mono mb-4 font-semibold">Connect</p>
+              <p className="text-white/40 text-[11px] uppercase tracking-[0.15em] font-mono mb-4 font-semibold">Legal &amp; Trust</p>
               <ul className="flex flex-col gap-3">
-                {SOCIAL_LINKS.map((l) => (
+                {LEGAL_LINKS.map((l) => (
                   <li key={l.label}>
-                    <a
+                    <Link
                       href={l.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-white/70 hover:text-white transition-colors text-sm flex items-center gap-1.5"
+                      className="text-white/70 hover:text-white transition-colors text-sm"
                     >
                       {l.label}
-                      <ArrowUpRight size={11} className="opacity-50" />
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
+
+              <div className="mt-6 pt-4 border-t border-white/10">
+                <p className="text-white/40 text-[10px] uppercase tracking-[0.15em] font-mono mb-3 font-semibold">Connect</p>
+                <div className="flex flex-col gap-2">
+                  {SOCIAL_LINKS.map((l) => (
+                    <a
+                      key={l.label}
+                      href={l.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-white/60 hover:text-white transition-colors text-xs flex items-center gap-1.5"
+                    >
+                      <span>{l.label}</span>
+                      <ArrowUpRight size={11} className="opacity-50" />
+                    </a>
+                  ))}
+                </div>
+              </div>
             </div>
+
           </div>
         </div>
 
         {/* ─── Copyright bar ─── */}
         <div className="mx-6 md:mx-12 border-t border-white/10 py-6">
-          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2 text-white/35 text-xs">
-            <span>© 2025 ATS Checker. All rights reserved.</span>
-            <div className="flex items-center gap-5">
-              <span>Confidential &amp; Encrypted</span>
-              <span>Greenhouse · Ashby · Workday · Taleo</span>
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-white/35 text-xs">
+            <span>© 2026 ATS Checker. All rights reserved.</span>
+            
+            <div className="flex flex-wrap items-center gap-5">
+              <Link href="/privacy" className="hover:text-white/70 transition-colors">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="hover:text-white/70 transition-colors">
+                Terms of Service
+              </Link>
+              <Link href="/security" className="hover:text-white/70 transition-colors">
+                Security Architecture
+              </Link>
+              <Link href="/contact" className="hover:text-white/70 transition-colors">
+                Contact Support
+              </Link>
             </div>
           </div>
         </div>
