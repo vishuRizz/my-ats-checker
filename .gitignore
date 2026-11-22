@@ -31,3 +31,11 @@ Thumbs.db
 
 # ─── Local evaluation reports ────────────────────────────────
 eval/reports/
+
+# ─── More env variants / secrets ──────────────
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+credentials*.json
